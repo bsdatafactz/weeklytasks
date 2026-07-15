@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uc1-rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uc1
+      POSTGRES_PASSWORD: uc1
+      POSTGRES_DB: uc1_rag
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
