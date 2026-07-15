@@ -15,7 +15,7 @@ company policy/benefits/procedures, grounded only in the document corpus in `res
 ## Layout
 
 ```
-resources/    source corpus (PDF, DOCX, MD, HTML — 17 docs)
+resources/    source corpus (9 PDF, 4 DOCX, 4 HTML, 3 MD — 20 docs)
 backend/      FastAPI app: routers -> services -> repositories, Alembic migrations
 frontend/     React chat UI + admin view
 docs/         design doc, architecture diagram, ERD, pattern justification,

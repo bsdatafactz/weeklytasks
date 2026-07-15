@@ -4,7 +4,7 @@
 
 Employees need quick, trustworthy answers to policy/benefits/procedure questions without
 digging through a stack of PDFs, DOCX files, and wiki pages. Today those answers live
-scattered across 17 source documents in 4 formats. This project builds an internal knowledge
+scattered across 20 source documents in 4 formats. This project builds an internal knowledge
 assistant that answers questions **grounded only in that corpus** — with citations back to
 the source document and section, a refusal path for out-of-scope questions, and resistance to
 prompt-injection attempts — so employees get a fast, accurate, auditable answer instead of an
@@ -12,12 +12,16 @@ LLM improvising from general knowledge.
 
 ## 2. Corpus
 
-17 documents, `uc1-RAG-Knowledge-Chatbot/resources/`: 8 PDF, 3 DOCX, 3 Markdown, 2 HTML (plus
-2 files with misleading extensions — `progressive-discipline-policy` and
-`employee-handbook-sample.doc` are both actually HTML; the ingestion loader sniffs content
-type rather than trusting the extension). Two PDFs are large (~9.5MB, ~6.8MB) and will
-dominate raw chunk count — retrieval testing deliberately includes queries against the
-smaller, more specific documents too, so the index isn't just validated against the big files.
+20 documents, `uc1-RAG-Knowledge-Chatbot/resources/`: 9 PDF, 4 DOCX, 4 HTML, 3 Markdown —
+including `progressive-discipline-policy` and `employee-handbook-sample.doc`, both HTML
+content under a misleading extension. The ingestion loader sniffs actual content type
+(`python-magic`) rather than trusting the extension, so both are correctly parsed as HTML;
+confirmed by running the loader against the real corpus (all 20 files parse without error,
+1,023 chunks total). Two PDFs are large (~9.5MB, ~6.8MB) and dominate raw chunk count (53 and
+19 chunks respectively) — dwarfed by `deo_handbook.pdf` (322 chunks) and `wfahandbook.pdf`
+(273 chunks), which are larger still. Retrieval testing deliberately includes queries against
+the smaller, more specific documents too, so the index isn't validated only against the
+largest files.
 
 ## 3. Architecture
 

@@ -62,14 +62,13 @@ class Chunk:
 
 def sniff_format(path: Path) -> str:
     mime = magic.from_file(str(path), mime=True)
-    fmt = _MIME_TO_FORMAT.get(mime)
-    if fmt:
-        return fmt
-    # markdown files often sniff as text/plain; fall back to the extension.
+    # magic reports .md files as generic text/plain, indistinguishable from plain .txt;
+    # the extension is the only signal for markdown specifically, so check it first.
     ext = path.suffix.lower().lstrip(".")
-    if ext in ("md", "markdown"):
+    if mime == "text/plain" and ext in ("md", "markdown"):
         return "markdown"
-    return _MIME_TO_FORMAT.get(mime, ext or "unknown")
+    fmt = _MIME_TO_FORMAT.get(mime)
+    return fmt or ext or "unknown"
 
 
 def _load_pdf(path: Path) -> str:
