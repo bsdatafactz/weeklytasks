@@ -11,6 +11,29 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uc1 -d uc1_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: uc1-rag-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Inside the compose network the DB is reachable at postgres:5432 (its
+      # internal port); .env's DATABASE_URL targets localhost:5433 for host-side
+      # dev instead, so it's overridden here for the containerized backend.
+      DATABASE_URL: postgresql+asyncpg://uc1:uc1@postgres:5432/uc1_rag
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   pgdata:
