@@ -165,8 +165,9 @@ alternatives.
 
 ## 7. Retrieval quality note
 
-See `retrieval-quality-note.md` — filled in once the index is populated and spot-checked
-(commit checkpoint #5 in the build plan).
+See `retrieval-quality-note.md` — 10 real test questions against the live index, including
+the discovery that the initial refusal threshold (0.55) was calibrated for the wrong score
+scale, corrected to 2.0 against real in-corpus vs. out-of-corpus scores.
 
 ## 8. Cost estimate
 
