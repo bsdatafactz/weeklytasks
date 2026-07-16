@@ -65,3 +65,27 @@ export async function reindexDocuments() {
   if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
   return res.json()
 }
+
+export async function fetchConversations() {
+  const res = await fetch(`${API_BASE}/api/v1/conversations`, {
+    headers: { 'x-api-key': API_KEY },
+  })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+  return res.json()
+}
+
+export async function fetchConversationDetail(conversationId) {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}`, {
+    headers: { 'x-api-key': API_KEY },
+  })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+  return res.json()
+}
+
+export async function deleteConversation(conversationId) {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}`, {
+    method: 'DELETE',
+    headers: { 'x-api-key': API_KEY },
+  })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+}

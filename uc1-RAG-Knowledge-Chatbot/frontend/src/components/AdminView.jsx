@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw, FileText, CheckCircle2, Clock } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { RefreshCw, FileText, CheckCircle2, Clock, MessageCircle } from 'lucide-react'
 import { fetchDocuments, reindexDocuments } from '../lib/api.js'
 
 function formatDate(value) {
@@ -49,82 +50,100 @@ export default function AdminView() {
   const totalChunks = documents.reduce((sum, d) => sum + (d.chunk_count ?? 0), 0)
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-neutral-100">Indexed documents</h2>
-          <p className="text-sm text-neutral-500">
-            {documents.length} documents · {totalChunks} chunks
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleReindex}
-          disabled={reindexing}
-          className="inline-flex items-center gap-2 rounded-md bg-df-orange px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+    <div className="flex h-screen flex-col bg-df-navy">
+      <header className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-6 py-3">
+        <p className="text-sm font-semibold tracking-wide text-neutral-400">
+          Data<span className="text-df-orange">FactZ</span>
+          <span className="ml-2 text-neutral-600">Admin</span>
+        </p>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-neutral-400 transition hover:bg-neutral-900 hover:text-neutral-200"
         >
-          <RefreshCw className={`size-4 ${reindexing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
-          {reindexing ? 'Re-indexing…' : 'Re-index'}
-        </button>
-      </div>
+          <MessageCircle className="size-3.5" strokeWidth={1.75} />
+          Chat
+        </Link>
+      </header>
 
-      {error && (
-        <div className="rounded-md border border-df-red/40 bg-df-red/10 px-4 py-2.5 text-sm text-red-200">
-          {error}
-        </div>
-      )}
-
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 overflow-hidden">
-        {loading ? (
-          <p className="px-4 py-6 text-center text-sm text-neutral-500">Loading…</p>
-        ) : documents.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-neutral-500">
-            No documents indexed yet — click re-index to run ingestion.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-neutral-800 text-left text-xs uppercase tracking-wide text-neutral-500">
-                <th className="px-4 py-3 font-medium">Document</th>
-                <th className="px-4 py-3 font-medium">Format</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Chunks</th>
-                <th className="px-4 py-3 font-medium">Indexed at</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.id} className="border-b border-neutral-800/60 last:border-0">
-                  <td className="px-4 py-3 text-neutral-200">
-                    <span className="inline-flex items-center gap-2">
-                      <FileText className="size-3.5 shrink-0 text-df-orange" strokeWidth={1.75} />
-                      {doc.filename}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-neutral-400 uppercase text-xs">{doc.format}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1.5 text-xs ${
-                        doc.status === 'indexed' ? 'text-emerald-400' : 'text-neutral-500'
-                      }`}
-                    >
-                      {doc.status === 'indexed' ? (
-                        <CheckCircle2 className="size-3.5" strokeWidth={1.75} />
-                      ) : (
-                        <Clock className="size-3.5" strokeWidth={1.75} />
-                      )}
-                      {doc.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-neutral-400">{doc.chunk_count}</td>
-                  <td className="px-4 py-3 text-neutral-500 text-xs">{formatDate(doc.indexed_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-neutral-100">Indexed documents</h1>
+              <p className="text-sm text-neutral-500">
+                {documents.length} documents · {totalChunks} chunks
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleReindex}
+              disabled={reindexing}
+              className="inline-flex items-center gap-2 rounded-md bg-df-orange px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`size-4 ${reindexing ? 'animate-spin' : ''}`} strokeWidth={1.75} />
+              {reindexing ? 'Re-indexing…' : 'Re-index'}
+            </button>
           </div>
-        )}
+
+          {error && (
+            <div className="rounded-md border border-df-red/40 bg-df-red/10 px-4 py-2.5 text-sm text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 overflow-hidden">
+            {loading ? (
+              <p className="px-4 py-6 text-center text-sm text-neutral-500">Loading…</p>
+            ) : documents.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-neutral-500">
+                No documents indexed yet — click re-index to run ingestion.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-left text-xs uppercase tracking-wide text-neutral-500">
+                      <th className="px-4 py-3 font-medium">Document</th>
+                      <th className="px-4 py-3 font-medium">Format</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
+                      <th className="px-4 py-3 font-medium">Chunks</th>
+                      <th className="px-4 py-3 font-medium">Indexed at</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.map((doc) => (
+                      <tr key={doc.id} className="border-b border-neutral-800/60 last:border-0">
+                        <td className="px-4 py-3 text-neutral-200">
+                          <span className="inline-flex items-center gap-2">
+                            <FileText className="size-3.5 shrink-0 text-df-orange" strokeWidth={1.75} />
+                            {doc.filename}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-400 uppercase text-xs">{doc.format}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-xs ${
+                              doc.status === 'indexed' ? 'text-emerald-400' : 'text-neutral-500'
+                            }`}
+                          >
+                            {doc.status === 'indexed' ? (
+                              <CheckCircle2 className="size-3.5" strokeWidth={1.75} />
+                            ) : (
+                              <Clock className="size-3.5" strokeWidth={1.75} />
+                            )}
+                            {doc.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-400">{doc.chunk_count}</td>
+                        <td className="px-4 py-3 text-neutral-500 text-xs">{formatDate(doc.indexed_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
