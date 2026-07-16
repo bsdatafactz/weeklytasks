@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-df-orange: #fc7900;
+  --color-df-navy: #182127;
+  --color-df-yellow: #f4ad0b;
+  --color-df-red: #e3434a;
+}
+
+@layer base {
+  body {
+    @apply bg-df-navy text-neutral-200 antialiased;
+  }
+}
+
+@keyframes cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.streaming-cursor {
+  animation: cursor-blink 1s step-end infinite;
+}
