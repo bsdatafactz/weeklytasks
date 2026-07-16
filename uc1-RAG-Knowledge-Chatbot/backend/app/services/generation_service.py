@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 from openai import AsyncOpenAI
 
 from app.clients.azure_foundry_client import get_openai_client
@@ -33,20 +35,27 @@ def _format_context(chunks: list[dict]) -> str:
     return "\n\n".join(f"[{c['filename']}, {c['chunk_ref']}]\n{c['snippet']}" for c in chunks)
 
 
-async def generate_answer(
+def _build_input(question: str, context_chunks: list[dict], history: list[tuple[str, str]]) -> list[dict]:
+    context_block = _format_context(context_chunks)
+    user_content = f"Context:\n{context_block}\n\nQuestion: {question}"
+    input_items = [{"role": role, "content": content} for role, content in history]
+    input_items.append({"role": "user", "content": user_content})
+    return input_items
+
+
+async def stream_answer(
     question: str,
     context_chunks: list[dict],
     history: list[tuple[str, str]],
     model: str | None = None,
-) -> str:
+) -> AsyncIterator[str]:
+    """Yields the answer as incremental text deltas via the Responses API's streaming mode."""
     model = model or settings.generation_model_default
-    context_block = _format_context(context_chunks)
-    user_content = f"Context:\n{context_block}\n\nQuestion: {question}"
-
-    input_items = [{"role": role, "content": content} for role, content in history]
-    input_items.append({"role": "user", "content": user_content})
+    input_items = _build_input(question, context_chunks, history)
 
     client = get_openai_client()
     async with client:
-        response = await client.responses.create(model=model, instructions=SYSTEM_PROMPT, input=input_items)
-        return response.output_text
+        stream = await client.responses.create(model=model, instructions=SYSTEM_PROMPT, input=input_items, stream=True)
+        async for event in stream:
+            if event.type == "response.output_text.delta":
+                yield event.delta

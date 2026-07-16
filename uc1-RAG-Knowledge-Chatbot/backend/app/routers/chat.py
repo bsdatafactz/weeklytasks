@@ -1,12 +1,15 @@
+import json
 import logging
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_db
+from app.db import async_session_factory, get_db
 from app.dependencies import require_api_key
 from app.repositories import citation_repo, conversation_repo, message_repo
-from app.schemas.chat import ChatRequest, ChatResponse, CitationOut
+from app.schemas.chat import ChatRequest
 from app.services import generation_service, guardrail_service, retrieval_service
 
 logger = logging.getLogger(__name__)
@@ -19,8 +22,12 @@ REFUSAL_MESSAGE = (
 )
 
 
-@router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> ChatResponse:
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+@router.post("")
+async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> StreamingResponse:
     flagged, pattern = guardrail_service.screen_injection(request.message)
     if flagged:
         logger.warning("prompt_injection_flagged", extra={"pattern": pattern})
@@ -31,34 +38,58 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Chat
 
     chunks = await retrieval_service.retrieve(request.message)
     top_score = chunks[0]["score"] if chunks else None
+    refused = guardrail_service.should_refuse(top_score)
 
     await message_repo.add_message(db, conversation_id=conversation.id, role="user", content=request.message)
-
-    if guardrail_service.should_refuse(top_score):
-        answer = REFUSAL_MESSAGE
-        await message_repo.add_message(db, conversation_id=conversation.id, role="assistant", content=answer)
-        await db.commit()
-        return ChatResponse(conversation_id=conversation.id, message=answer, refused=True, citations=[])
-
-    answer = await generation_service.generate_answer(request.message, chunks, history)
-    assistant_message = await message_repo.add_message(
-        db, conversation_id=conversation.id, role="assistant", content=answer
-    )
-    await citation_repo.add_citations(db, assistant_message.id, chunks)
     await db.commit()
 
-    return ChatResponse(
-        conversation_id=conversation.id,
-        message=answer,
-        refused=False,
-        citations=[
-            CitationOut(
-                document_id=c["document_id"],
-                filename=c["filename"],
-                chunk_ref=c["chunk_ref"],
-                snippet=c["snippet"],
-                score=c["score"],
+    conversation_id = conversation.id
+
+    async def event_stream() -> AsyncIterator[str]:
+        citations_payload = (
+            []
+            if refused
+            else [
+                {
+                    "document_id": str(c["document_id"]),
+                    "filename": c["filename"],
+                    "chunk_ref": c["chunk_ref"],
+                    "snippet": c["snippet"],
+                    "score": c["score"],
+                }
+                for c in chunks
+            ]
+        )
+        yield _sse(
+            {
+                "type": "meta",
+                "conversation_id": str(conversation_id),
+                "refused": refused,
+                "injection_flagged": flagged,
+                "citations": citations_payload,
+            }
+        )
+
+        if refused:
+            answer = REFUSAL_MESSAGE
+            yield _sse({"type": "delta", "text": answer})
+        else:
+            parts: list[str] = []
+            async for delta in generation_service.stream_answer(request.message, chunks, history):
+                parts.append(delta)
+                yield _sse({"type": "delta", "text": delta})
+            answer = "".join(parts)
+
+        # Fresh session: the request-scoped `db` above isn't guaranteed to still be open
+        # by the time this generator resumes after streaming starts.
+        async with async_session_factory() as db2:
+            assistant_message = await message_repo.add_message(
+                db2, conversation_id=conversation_id, role="assistant", content=answer
             )
-            for c in chunks
-        ],
-    )
+            if not refused:
+                await citation_repo.add_citations(db2, assistant_message.id, chunks)
+            await db2.commit()
+
+        yield _sse({"type": "done"})
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
