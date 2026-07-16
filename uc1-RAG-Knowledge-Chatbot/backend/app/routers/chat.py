@@ -36,7 +36,8 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
     history_rows = await message_repo.recent_history(db, conversation.id)
     history = [(m.role, m.content) for m in history_rows]
 
-    chunks = await retrieval_service.retrieve(request.message)
+    retrieval_query = await generation_service.condense_query(request.message, history)
+    chunks = await retrieval_service.retrieve(retrieval_query)
     top_score = chunks[0]["score"] if chunks else None
     refused = guardrail_service.should_refuse(top_score)
 

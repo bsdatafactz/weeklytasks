@@ -16,6 +16,7 @@ all 4 corpus formats, both large documents, and out-of-corpus/negative cases.
 | 8 | What does the employee guide say about onboarding for new hires? | *(deliberately ambiguous — see note)* | `employee-handbook-sample.doc`, "4. Benefits & Employee Wellness" | 2.600 | **Not a retrieval failure**: `employeeguide.pdf` is actually a DOL *FMLA* guide, not an onboarding doc — its filename is misleading. Correctly did NOT surface it; surfaced the closest actual onboarding content instead. |
 | 9 | What is the capital of France? | *(none — out of corpus)* | — | 1.347 | Below the 2.0 refusal threshold; correctly refuses (see guardrail_service). |
 | 10 | What is our company's stock ticker symbol? | *(none — plausible-sounding, out of corpus)* | — | 1.772 | Below threshold; correctly refuses despite sounding like a legitimate HR-adjacent question. |
+| 11 | (turn 1) "Establish Workforce Analysis Working Group" → (turn 2, same chat) "tell me something about that" | `wfahandbook.pdf`, both turns | Turn 1: `wfahandbook.pdf`, 3.646. Turn 2 raw: 1.978 (below threshold — incorrectly refused). Turn 2 condensed: `wfahandbook.pdf`, 3.109 | **Real bug, found via user testing**: a vague follow-up referencing the prior turn scored below the refusal threshold on its own, because retrieval only ever saw the current message, never conversation history. Fixed with `generation_service.condense_query()` — rewrites the follow-up into a standalone question against history before retrieval runs (see pattern-justification table). |
 
 ## Tuning applied
 

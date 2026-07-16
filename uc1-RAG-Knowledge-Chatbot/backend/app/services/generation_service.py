@@ -31,6 +31,34 @@ async def embed_text(text: str, model: str | None = None, client: AsyncOpenAI | 
         return response.data[0].embedding
 
 
+CONDENSE_PROMPT = (
+    "Rewrite the user's latest message as a standalone question that can be understood "
+    "without the conversation above -- resolve pronouns and vague references like "
+    "'that', 'it', or 'this one' against what was actually being discussed. If the "
+    "message already stands alone, return it unchanged. Output only the rewritten "
+    "question, nothing else -- no preamble, no quotes."
+)
+
+
+async def condense_query(question: str, history: list[tuple[str, str]]) -> str:
+    """Retrieval only ever searches with this turn's question -- a vague follow-up
+    ("tell me more about that") carries no retrievable meaning on its own and would
+    otherwise send retrieval nothing to match, triggering an incorrect refusal before
+    generation ever sees the history that would have resolved it. Skipped when there's
+    no history: nothing to resolve against, and it saves a round-trip on turn one."""
+    if not history:
+        return question
+
+    model = settings.generation_model_default
+    input_items = [{"role": role, "content": content} for role, content in history]
+    input_items.append({"role": "user", "content": question})
+
+    client = get_openai_client()
+    async with client:
+        response = await client.responses.create(model=model, instructions=CONDENSE_PROMPT, input=input_items)
+        return response.output_text.strip() or question
+
+
 def _format_context(chunks: list[dict]) -> str:
     return "\n\n".join(f"[{c['filename']}, {c['chunk_ref']}]\n{c['snippet']}" for c in chunks)
 
