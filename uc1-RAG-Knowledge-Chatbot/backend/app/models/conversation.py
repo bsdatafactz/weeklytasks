@@ -14,4 +14,6 @@ class Conversation(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    messages: Mapped[list["Message"]] = relationship(back_populates="conversation", order_by="Message.created_at")
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation", order_by="Message.created_at", cascade="all, delete-orphan"
+    )

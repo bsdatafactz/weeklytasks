@@ -21,3 +21,12 @@ async def recent_history(db: AsyncSession, conversation_id: uuid.UUID, limit: in
         .limit(limit)
     )
     return list(reversed(result.scalars().all()))
+
+
+async def full_history(db: AsyncSession, conversation_id: uuid.UUID) -> list[Message]:
+    """Uncapped, for restoring a conversation in the UI -- recent_history() is
+    capped for prompt-context-size reasons, a different concern from this."""
+    result = await db.execute(
+        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
+    )
+    return list(result.scalars().all())
