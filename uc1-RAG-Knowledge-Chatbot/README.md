@@ -32,10 +32,36 @@ docker compose up -d --build
 curl http://localhost:8001/api/v1/health
 ```
 
-This starts Postgres (`localhost:5433` on the host, `postgres:5432` inside the compose
-network) and the backend (`localhost:8001` — `8000` is already used by `day1-hello-world`'s
-backend on this machine), running Alembic migrations automatically on container start.
+This starts three containers:
 
-For local dev without Docker for the backend itself (Postgres still needs `docker compose up
--d postgres`): `cd backend && uv run uvicorn app.main:app --reload --port 8000`, using
-`DATABASE_URL=postgresql+asyncpg://uc1:uc1@localhost:5433/uc1_rag` from `.env`.
+| Service | Host port | Notes |
+|---|---|---|
+| `postgres` | 5433 (`postgres:5432` inside the compose network) | Alembic migrations run automatically on backend container start |
+| `backend` | 8001 (`8000` is already used by `day1-hello-world`'s backend on this machine) | FastAPI |
+| `frontend` | 5173 | nginx serving the Vite production build |
+
+Open `http://localhost:5173` for the chat UI once all three are up.
+
+For local dev without Docker for the backend/frontend themselves (Postgres still needs
+`docker compose up -d postgres`):
+- Backend: `cd backend && uv run uvicorn app.main:app --reload --port 8000`, using
+  `DATABASE_URL=postgresql+asyncpg://uc1:uc1@localhost:5433/uc1_rag` from `.env`.
+- Frontend: `cd frontend && cp .env.example .env && npm install && npm run dev`.
+
+## Docker images
+
+Both `backend` and `frontend` are tagged `bsdatafacz/uc1-rag-{backend,frontend}:latest` in
+`docker-compose.yml` (alongside `build:`, so `docker compose build` produces images under that
+tag locally). To publish to Docker Hub:
+
+```
+docker login
+docker compose build
+docker push bsdatafacz/uc1-rag-backend:latest
+docker push bsdatafacz/uc1-rag-frontend:latest
+```
+
+Note: the frontend image bakes `VITE_API_BASE`/`VITE_APP_API_KEY` in at build time (Vite
+inlines them into the static bundle) — the build args in `docker-compose.yml` point at
+`localhost:8001` for local use. A pushed/shared image would need rebuilding with build args
+pointing at wherever the backend is actually reachable from the browser using it.
