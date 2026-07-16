@@ -15,12 +15,10 @@ class Settings(BaseSettings):
     azure_search_api_key: str = ""
     azure_search_index_name: str = "uc1-rag-index"
 
-    azure_foundry_endpoint: str = ""
+    azure_foundry_endpoint: str = ""  # OpenAI v1-compatible base, e.g. https://<resource>.services.ai.azure.com/openai/v1
     azure_foundry_api_key: str = ""
-    azure_foundry_api_version: str = "2024-10-21"
 
-    generation_model_default: str = "deepseek-v3.2"
-    generation_model_alt: str = "gpt-5.5"
+    generation_model_default: str = "gpt-5"
 
     embedding_model_default: str = "text-embedding-3-large"
     embedding_model_alt: str = "text-embedding-3-small"

@@ -43,7 +43,7 @@ flowchart TB
         GR1 --> R[retrieval_service: hybrid vector+keyword, semantic ranker]
         F --> R
         R --> CTX[Context assembly: top-k chunks + history budget]
-        CTX --> GEN[generation_service: Foundry DeepSeek V3.2 / GPT-5.5]
+        CTX --> GEN[generation_service: Foundry GPT-5 via Responses API]
         GEN --> GR2[guardrail_service: refusal check on low retrieval score]
         GR2 --> RESP[Response + inline citations]
         RESP --> G
@@ -135,11 +135,19 @@ alternatives.
 | Chunking | Structure-aware — split on headings/sections, ~500-800 tokens, ~10-15% overlap | **Fixed-size 512-token windows**: ignores document structure, frequently splits mid-section, breaks citation-to-section mapping. **Semantic/embedding-based chunking**: adds embedding calls during chunking itself for marginal gain on well-structured policy docs — not worth the extra latency/cost here. |
 | Retrieval | Hybrid (vector + keyword) with semantic ranker | **Pure vector search**: misses exact-term matches like policy names, section numbers, acronyms that show up verbatim in questions. **Pure keyword search**: misses paraphrased/natural-language questions that don't share vocabulary with the source doc. |
 | Embedding model | `text-embedding-3-large` (Azure AI Foundry) | **`text-embedding-3-small`**: cheaper/faster but measurably lower retrieval quality on the nuanced language in HR policy text — compared head-to-head on the retrieval-quality test set (§7). **AI Search integrated vectorization**: adds a second managed-service dependency for embeddings the team can already generate directly via Foundry — no benefit once a Foundry embedding deployment exists. |
-| Generation model | DeepSeek V3.2 (default), compared against GPT-5.5 | **GPT-5**: no measurable quality edge over GPT-5.5 for this task at comparable or higher cost, so it isn't worth carrying as a third option. |
+| Generation model | GPT-5 | **GPT-5.5**: no measurable quality edge over GPT-5 for this grounded-QA task, and its Foundry quota is far more constraining — 5M TPM / 5K RPM vs. GPT-5's 15M TPM / 150K RPM. The RPM gap (30x) matters most: request-count limits bind before token limits under many concurrent short chat turns, so GPT-5.5 would hit quota walls first as usage scales toward 5,000 users. **DeepSeek V3.2**: weakest quota of the three (500K TPM / 500 RPM) and requires a separate Azure AI Inference (serverless) endpoint/SDK route instead of the OpenAI-compatible one already used for embeddings — extra operational surface with no offsetting benefit for this task. |
 | Relational database | Postgres, local via Docker | **Azure Database for PostgreSQL Flexible Server**: no provisioning access in the shared Resource Group. **Cosmos DB**: same access constraint, and its document model is a worse fit than Postgres's relational joins for `conversations → messages → citations`. This is a documented deviation from the "Azure-hosted" default — production path is to migrate to Azure Database for PostgreSQL Flexible Server once access is granted (see §6). |
 
 ## 6. Scalability (100 → 5,000 users)
 
+- **Generation quota is the binding constraint, not the backend.** GPT-5's Foundry quota
+  (15M TPM / 150K RPM) gives real headroom: at ~1.5K tokens/turn (context + history +
+  answer), 150K RPM caps out around 225M tokens/min of *request* capacity before the 15M TPM
+  *token* ceiling is even reached — so RPM, not TPM, is the number to watch as concurrent
+  users grow. At 5,000 users with a generous 1 turn/user/minute peak, that's 5,000 RPM — 3%
+  of the 150K RPM ceiling, comfortable headroom without a quota increase request. This is
+  also why GPT-5.5 (5K RPM) was rejected in §5: the same 5,000-user peak would already be at
+  its limit.
 - **Backend**: stateless FastAPI, async I/O throughout — horizontally scalable behind Azure
   Container Apps with autoscale as the target production topology (not deployed there today
   due to access constraints, but the code has no in-process state that would block it).

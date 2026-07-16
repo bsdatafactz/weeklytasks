@@ -6,7 +6,7 @@ company policy/benefits/procedures, grounded only in the document corpus in `res
 ## Stack
 
 - Retrieval: Azure AI Search (hybrid vector + keyword, semantic ranker)
-- Generation: Azure AI Foundry (DeepSeek V3.2 default, GPT-5.5 compared)
+- Generation: Azure AI Foundry GPT-5 (Responses API, via the OpenAI v1-compatible endpoint)
 - Embeddings: Azure AI Foundry `text-embedding-3-large` (compared against `text-embedding-3-small`)
 - Relational data (documents, conversations, messages, citations): Postgres, local via Docker
 - Backend: FastAPI (Python 3.11+, `uv`)
