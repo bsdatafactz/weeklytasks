@@ -82,6 +82,7 @@ export default function AdminView() {
             No documents indexed yet — click re-index to run ingestion.
           </p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-800 text-left text-xs uppercase tracking-wide text-neutral-500">
@@ -122,6 +123,7 @@ export default function AdminView() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

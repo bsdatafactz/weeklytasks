@@ -8,7 +8,7 @@ function App() {
 
   return (
     <div className="min-h-screen px-6 py-8">
-      <div className="mx-auto max-w-3xl">
+      <div className={`mx-auto transition-[max-width] ${view === 'admin' ? 'max-w-5xl' : 'max-w-3xl'}`}>
         <header className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold tracking-wide text-neutral-400">

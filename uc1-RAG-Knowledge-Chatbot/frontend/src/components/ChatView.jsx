@@ -84,7 +84,7 @@ export default function ChatView() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-h-full flex-col justify-end gap-3">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}

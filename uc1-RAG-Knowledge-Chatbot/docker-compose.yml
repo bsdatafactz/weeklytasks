@@ -19,7 +19,7 @@ services:
 
   backend:
     build: ./backend
-    image: bsdatafacz/uc1-rag-backend:latest
+    image: bsdatafactz/uc1-rag-backend:v1
     container_name: uc1-rag-backend
     restart: unless-stopped
     env_file:
@@ -44,7 +44,7 @@ services:
         # from the browser on the host, not the compose-internal network name.
         VITE_API_BASE: http://localhost:8001
         VITE_APP_API_KEY: dev-local-key
-    image: bsdatafacz/uc1-rag-frontend:latest
+    image: bsdatafactz/uc1-rag-frontend:v1
     container_name: uc1-rag-frontend
     restart: unless-stopped
     ports:

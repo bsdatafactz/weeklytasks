@@ -51,15 +51,15 @@ For local dev without Docker for the backend/frontend themselves (Postgres still
 
 ## Docker images
 
-Both `backend` and `frontend` are tagged `bsdatafacz/uc1-rag-{backend,frontend}:latest` in
+Both `backend` and `frontend` are tagged `bsdatafactz/uc1-rag-{backend,frontend}:v1` in
 `docker-compose.yml` (alongside `build:`, so `docker compose build` produces images under that
 tag locally). To publish to Docker Hub:
 
 ```
 docker login
 docker compose build
-docker push bsdatafacz/uc1-rag-backend:latest
-docker push bsdatafacz/uc1-rag-frontend:latest
+docker push bsdatafactz/uc1-rag-backend:v1
+docker push bsdatafactz/uc1-rag-frontend:v1
 ```
 
 Note: the frontend image bakes `VITE_API_BASE`/`VITE_APP_API_KEY` in at build time (Vite
