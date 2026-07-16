@@ -36,7 +36,7 @@ from app.services.generation_service import embed_text
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-RESOURCES_DIR = Path(__file__).resolve().parents[3] / "resources"
+RESOURCES_DIR = Path(__file__).resolve().parents[2] / "resources"
 
 CHUNK_MAX_TOKENS = 700
 CHUNK_OVERLAP_RATIO = 0.12

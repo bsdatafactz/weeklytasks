@@ -12,7 +12,9 @@ LLM improvising from general knowledge.
 
 ## 2. Corpus
 
-20 documents, `uc1-RAG-Knowledge-Chatbot/resources/`: 9 PDF, 4 DOCX, 4 HTML, 3 Markdown —
+20 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` (kept inside the backend's Docker
+build context so ingestion works in a container without a separate volume mount): 9 PDF,
+4 DOCX, 4 HTML, 3 Markdown —
 including `progressive-discipline-policy` and `employee-handbook-sample.doc`, both HTML
 content under a misleading extension. The ingestion loader sniffs actual content type
 (`python-magic`) rather than trusting the extension, so both are correctly parsed as HTML;

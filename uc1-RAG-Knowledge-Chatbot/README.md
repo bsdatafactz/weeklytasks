@@ -1,7 +1,7 @@
 # UC1 — RAG Knowledge Chatbot
 
 Week 1 deliverable: an internal knowledge assistant that answers employee questions about
-company policy/benefits/procedures, grounded only in the document corpus in `resources/`.
+company policy/benefits/procedures, grounded only in the document corpus in `backend/resources/`.
 
 ## Stack
 
@@ -15,11 +15,12 @@ company policy/benefits/procedures, grounded only in the document corpus in `res
 ## Layout
 
 ```
-resources/    source corpus (9 PDF, 4 DOCX, 4 HTML, 3 MD — 20 docs)
-backend/      FastAPI app: routers -> services -> repositories, Alembic migrations
-frontend/     React chat UI + admin view
-docs/         design doc, architecture diagram, ERD, pattern justification,
-              retrieval-quality note, cost estimate
+backend/            FastAPI app: routers -> services -> repositories, Alembic migrations
+backend/resources/  source corpus (9 PDF, 4 DOCX, 4 HTML, 3 MD — 20 docs), baked into the
+                     backend Docker image so ingestion works out of the box in a container
+frontend/           React chat UI + admin view
+docs/               design doc, architecture diagram, ERD, pattern justification,
+                     retrieval-quality note, cost estimate
 ```
 
 See `docs/design-doc.md` for the full architecture and pattern-justification table.
