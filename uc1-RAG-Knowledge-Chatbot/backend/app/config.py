@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     embedding_model_alt: str = "text-embedding-3-small"
 
     retrieval_top_k: int = 5
-    retrieval_score_threshold: float = 0.55
+    # Azure AI Search semantic reranker scores range ~0-4, not 0-1 -- 2.0 is Microsoft's
+    # documented starting point for filtering low-quality matches, confirmed against our
+    # own corpus (in-corpus hits scored 2.0-3.4, an out-of-corpus question scored 1.35).
+    retrieval_score_threshold: float = 2.0
 
 
 @lru_cache

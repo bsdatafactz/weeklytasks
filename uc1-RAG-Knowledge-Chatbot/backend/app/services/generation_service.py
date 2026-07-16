@@ -1,3 +1,5 @@
+from openai import AsyncOpenAI
+
 from app.clients.azure_foundry_client import get_openai_client
 from app.config import get_settings
 
@@ -13,11 +15,17 @@ SYSTEM_PROMPT = (
 )
 
 
-async def embed_text(text: str, model: str | None = None) -> list[float]:
+async def embed_text(text: str, model: str | None = None, client: AsyncOpenAI | None = None) -> list[float]:
+    """Pass an existing client (e.g. from a bulk ingestion loop) to reuse the HTTP
+    connection instead of opening/tearing one down per call."""
     model = model or settings.embedding_model_default
-    client = get_openai_client()
-    async with client:
+    if client is not None:
         response = await client.embeddings.create(model=model, input=text)
+        return response.data[0].embedding
+
+    owned_client = get_openai_client()
+    async with owned_client:
+        response = await owned_client.embeddings.create(model=model, input=text)
         return response.data[0].embedding
 
 

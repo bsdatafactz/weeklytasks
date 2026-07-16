@@ -1,4 +1,6 @@
+import asyncio
 import hashlib
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,14 +23,17 @@ from azure.search.documents.indexes.models import (
 )
 from bs4 import BeautifulSoup
 from docx import Document as DocxDocument
+from openai import AsyncOpenAI
 from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.azure_foundry_client import get_openai_client
 from app.clients.azure_search_client import get_search_client, get_search_index_client
 from app.config import get_settings
 from app.repositories import document_repo, indexing_run_repo
 from app.services.generation_service import embed_text
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 RESOURCES_DIR = Path(__file__).resolve().parents[3] / "resources"
@@ -233,14 +238,22 @@ async def ensure_index_exists() -> None:
         await index_client.create_index(index)
 
 
+EMBED_CONCURRENCY = 20
+
+
 async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
     await ensure_index_exists()
     run = await indexing_run_repo.start_run(db, triggered_by=triggered_by)
 
     total_docs = 0
     total_chunks = 0
+    semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
 
-    async with get_search_client() as search_client:
+    async def embed_bounded(embed_client: AsyncOpenAI, text: str) -> list[float]:
+        async with semaphore:
+            return await embed_text(text, client=embed_client)
+
+    async with get_search_client() as search_client, get_openai_client() as embed_client:
         for path in sorted(RESOURCES_DIR.iterdir()):
             if not path.is_file():
                 continue
@@ -253,26 +266,30 @@ async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
             loaded = load_document(path)
             chunks = chunk_document(loaded)
 
-            search_docs = []
-            for i, chunk in enumerate(chunks):
-                vector = await embed_text(chunk.content)
-                search_docs.append(
-                    {
-                        "id": f"{document.id}-{i}",
-                        "document_id": str(document.id),
-                        "filename": document.filename,
-                        "chunk_ref": chunk.chunk_ref,
-                        "content": chunk.content,
-                        "content_vector": vector,
-                    }
-                )
+            vectors = await asyncio.gather(*(embed_bounded(embed_client, chunk.content) for chunk in chunks))
+            search_docs = [
+                {
+                    "id": f"{document.id}-{i}",
+                    "document_id": str(document.id),
+                    "filename": document.filename,
+                    "chunk_ref": chunk.chunk_ref,
+                    "content": chunk.content,
+                    "content_vector": vector,
+                }
+                for i, (chunk, vector) in enumerate(zip(chunks, vectors, strict=True))
+            ]
 
             if search_docs:
                 await search_client.upload_documents(search_docs)
 
             await document_repo.mark_indexed(db, document.id, len(chunks))
+            await db.commit()  # durable per-document: a later failure can't orphan this document's
+            # Search entries against a rolled-back Postgres row (see incident in commit history)
             total_docs += 1
             total_chunks += len(chunks)
+            logger.info(
+                "ingested %s: %d chunks (%d docs / %d chunks so far)", path.name, len(chunks), total_docs, total_chunks
+            )
 
     await indexing_run_repo.finish_run(
         db, run.id, doc_count=total_docs, chunk_count=total_chunks, status="completed"
