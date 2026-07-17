@@ -58,6 +58,10 @@ async def get_conversation(conversation_id: uuid.UUID, db: AsyncSession = Depend
                 content=m.content,
                 created_at=m.created_at,
                 citations=citations_by_message.get(m.id, []),
+                model=m.model,
+                input_tokens=m.input_tokens,
+                output_tokens=m.output_tokens,
+                total_tokens=m.total_tokens,
             )
             for m in messages
         ],

@@ -6,7 +6,7 @@ const API_KEY = import.meta.env.VITE_APP_API_KEY ?? 'dev-local-key'
  * callbacks as events arrive: onMeta (citations/refused/injection_flagged),
  * onDelta (incremental answer text), onDone.
  */
-export async function streamChat({ message, conversationId, onMeta, onDelta, onDone, onError }) {
+export async function streamChat({ message, conversationId, model, onMeta, onDelta, onDone, onError }) {
   try {
     const response = await fetch(`${API_BASE}/api/v1/chat`, {
       method: 'POST',
@@ -14,7 +14,7 @@ export async function streamChat({ message, conversationId, onMeta, onDelta, onD
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
       },
-      body: JSON.stringify({ message, conversation_id: conversationId ?? null }),
+      body: JSON.stringify({ message, conversation_id: conversationId ?? null, model: model ?? null }),
     })
 
     if (!response.ok || !response.body) {
@@ -39,7 +39,7 @@ export async function streamChat({ message, conversationId, onMeta, onDelta, onD
           const payload = JSON.parse(line.slice('data: '.length))
           if (payload.type === 'meta') onMeta?.(payload)
           else if (payload.type === 'delta') onDelta?.(payload.text)
-          else if (payload.type === 'done') onDone?.()
+          else if (payload.type === 'done') onDone?.(payload)
         }
         boundary = buffer.indexOf('\n\n')
       }
@@ -47,6 +47,22 @@ export async function streamChat({ message, conversationId, onMeta, onDelta, onD
   } catch (err) {
     onError?.(err)
   }
+}
+
+export async function fetchModels() {
+  const res = await fetch(`${API_BASE}/api/v1/chat/models`, {
+    headers: { 'x-api-key': API_KEY },
+  })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+  return res.json()
+}
+
+export async function fetchAnalytics() {
+  const res = await fetch(`${API_BASE}/api/v1/analytics`, {
+    headers: { 'x-api-key': API_KEY },
+  })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+  return res.json()
 }
 
 export async function fetchDocuments() {

@@ -24,6 +24,10 @@ class MessageOut(BaseModel):
     content: str
     created_at: datetime
     citations: list[CitationOut] = []
+    model: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
 
 
 class ConversationDetail(BaseModel):

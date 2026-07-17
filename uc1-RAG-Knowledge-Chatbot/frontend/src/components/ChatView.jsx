@@ -1,15 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { streamChat, fetchConversations, fetchConversationDetail, deleteConversation } from '../lib/api.js'
+import {
+  streamChat,
+  fetchConversations,
+  fetchConversationDetail,
+  deleteConversation,
+  fetchModels,
+} from '../lib/api.js'
 import MessageBubble from './MessageBubble.jsx'
 import Composer from './Composer.jsx'
 import Sidebar from './Sidebar.jsx'
+import ConversationList from './ConversationList.jsx'
+import ModelSelector from './ModelSelector.jsx'
 
 const EXAMPLE_QUESTIONS = [
   'How many days per week can employees work remotely?',
   'What is the progressive discipline policy?',
   'What benefits and perks are offered?',
 ]
+
+const MODEL_STORAGE_KEY = 'uc1-selected-model'
 
 function mapStoredMessage(message) {
   return {
@@ -20,6 +30,8 @@ function mapStoredMessage(message) {
     refused: false,
     injectionFlagged: false,
     citations: message.citations ?? [],
+    model: message.model ?? null,
+    totalTokens: message.total_tokens ?? null,
   }
 }
 
@@ -29,6 +41,8 @@ export default function ChatView() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [models, setModels] = useState([])
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || '')
   const conversationIdRef = useRef(null)
   const listRef = useRef(null)
 
@@ -43,7 +57,18 @@ export default function ChatView() {
 
   useEffect(() => {
     loadConversations()
+    fetchModels()
+      .then((list) => {
+        setModels(list)
+        setSelectedModel((prev) => prev || list.find((m) => m.default)?.id || list[0]?.id || '')
+      })
+      .catch(() => {})
   }, [])
+
+  function handleSelectModel(modelId) {
+    setSelectedModel(modelId)
+    localStorage.setItem(MODEL_STORAGE_KEY, modelId)
+  }
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
@@ -107,6 +132,7 @@ export default function ChatView() {
     await streamChat({
       message: text,
       conversationId: conversationIdRef.current,
+      model: selectedModel,
       onMeta: (meta) => {
         conversationIdRef.current = meta.conversation_id
         setActiveConversationId(meta.conversation_id)
@@ -115,6 +141,7 @@ export default function ChatView() {
           refused: meta.refused,
           injectionFlagged: meta.injection_flagged,
           citations: meta.citations,
+          model: meta.model,
         })
       },
       onDelta: (delta) => {
@@ -123,8 +150,8 @@ export default function ChatView() {
         )
         scrollToBottom()
       },
-      onDone: () => {
-        updateAssistant({ streaming: false })
+      onDone: (payload) => {
+        updateAssistant({ streaming: false, totalTokens: payload?.total_tokens ?? null })
         setSending(false)
       },
       onError: () => {
@@ -148,15 +175,21 @@ export default function ChatView() {
 
   return (
     <div className="flex h-screen bg-df-navy">
-      <Sidebar
-        conversations={conversations}
-        activeId={activeConversationId}
-        onSelect={handleSelectConversation}
-        onNew={handleNewChat}
-        onDelete={handleDeleteConversation}
-      />
+      <Sidebar activePage="chat">
+        <ConversationList
+          conversations={conversations}
+          activeId={activeConversationId}
+          onSelect={handleSelectConversation}
+          onNew={handleNewChat}
+          onDelete={handleDeleteConversation}
+        />
+      </Sidebar>
 
       <div className="flex flex-1 flex-col">
+        <header className="flex shrink-0 items-center border-b border-neutral-800 px-3 py-2">
+          <ModelSelector models={models} selected={selectedModel} onSelect={handleSelectModel} />
+        </header>
+
         {!hasMessages ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
             <div className="text-center">

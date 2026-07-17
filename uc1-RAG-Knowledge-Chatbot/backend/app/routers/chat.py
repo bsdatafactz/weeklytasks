@@ -112,6 +112,6 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
                 await citation_repo.add_citations(db2, assistant_message.id, chunks)
             await db2.commit()
 
-        yield _sse({"type": "done"})
+        yield _sse({"type": "done", "total_tokens": usage.get("total_tokens")})
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

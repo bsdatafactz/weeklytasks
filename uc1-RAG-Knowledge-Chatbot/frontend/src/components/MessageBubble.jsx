@@ -1,6 +1,12 @@
 import Markdown from 'react-markdown'
-import { ShieldAlert, CircleSlash, Sparkles } from 'lucide-react'
+import { ShieldAlert, CircleSlash, Sparkles, Cpu } from 'lucide-react'
 import CitationChip from './CitationChip.jsx'
+
+const MODEL_LABELS = {
+  'gpt-5': 'GPT-5',
+  'gpt-5.5': 'GPT-5.5',
+  'deepseek-v3.2': 'DeepSeek V3.2',
+}
 
 const markdownComponents = {
   p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
@@ -78,6 +84,16 @@ export default function MessageBubble({ message }) {
             {message.citations.map((citation, i) => (
               <CitationChip key={`${citation.document_id}-${i}`} citation={citation} />
             ))}
+          </div>
+        )}
+
+        {!message.streaming && message.model && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-600">
+            <Cpu className="size-3" strokeWidth={1.75} />
+            {MODEL_LABELS[message.model] ?? message.model}
+            {message.totalTokens != null && (
+              <span className="tabular-nums">· {message.totalTokens.toLocaleString()} tokens</span>
+            )}
           </div>
         )}
       </div>
