@@ -26,11 +26,21 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+@router.get("/models")
+async def list_models() -> list[dict]:
+    return [
+        {"id": model_id, "label": label, "default": model_id == generation_service.settings.generation_model_default}
+        for model_id, label in generation_service.AVAILABLE_MODELS.items()
+    ]
+
+
 @router.post("")
 async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> StreamingResponse:
     flagged, pattern = guardrail_service.screen_injection(request.message)
     if flagged:
         logger.warning("prompt_injection_flagged", extra={"pattern": pattern})
+
+    model = generation_service.resolve_model(request.model)
 
     conversation = await conversation_repo.get_or_create(db, request.conversation_id)
     history_rows = await message_repo.recent_history(db, conversation.id)
@@ -68,15 +78,19 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
                 "refused": refused,
                 "injection_flagged": flagged,
                 "citations": citations_payload,
+                "model": model,
             }
         )
 
+        usage: dict = {}
         if refused:
             answer = REFUSAL_MESSAGE
             yield _sse({"type": "delta", "text": answer})
         else:
             parts: list[str] = []
-            async for delta in generation_service.stream_answer(request.message, chunks, history):
+            async for delta in generation_service.stream_answer(
+                request.message, chunks, history, model=model, usage_out=usage
+            ):
                 parts.append(delta)
                 yield _sse({"type": "delta", "text": delta})
             answer = "".join(parts)
@@ -85,7 +99,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
         # by the time this generator resumes after streaming starts.
         async with async_session_factory() as db2:
             assistant_message = await message_repo.add_message(
-                db2, conversation_id=conversation_id, role="assistant", content=answer
+                db2,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=answer,
+                model=None if refused else model,
+                input_tokens=usage.get("input_tokens"),
+                output_tokens=usage.get("output_tokens"),
+                total_tokens=usage.get("total_tokens"),
             )
             if not refused:
                 await citation_repo.add_citations(db2, assistant_message.id, chunks)

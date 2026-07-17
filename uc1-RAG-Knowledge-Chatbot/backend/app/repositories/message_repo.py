@@ -6,8 +6,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Message
 
 
-async def add_message(db: AsyncSession, *, conversation_id: uuid.UUID, role: str, content: str) -> Message:
-    message = Message(conversation_id=conversation_id, role=role, content=content)
+async def add_message(
+    db: AsyncSession,
+    *,
+    conversation_id: uuid.UUID,
+    role: str,
+    content: str,
+    model: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    total_tokens: int | None = None,
+) -> Message:
+    message = Message(
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+    )
     db.add(message)
     await db.flush()
     return message

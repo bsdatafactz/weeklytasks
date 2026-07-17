@@ -7,6 +7,21 @@ from app.config import get_settings
 
 settings = get_settings()
 
+# Verified live against the real Foundry resource -- all three reachable through the
+# same OpenAI-compatible client/endpoint, no separate SDK route needed for DeepSeek.
+AVAILABLE_MODELS = {
+    "gpt-5": "GPT-5",
+    "gpt-5.5": "GPT-5.5",
+    "deepseek-v3.2": "DeepSeek V3.2",
+}
+
+
+def resolve_model(requested: str | None) -> str:
+    if requested and requested in AVAILABLE_MODELS:
+        return requested
+    return settings.generation_model_default
+
+
 SYSTEM_PROMPT = (
     "You are the internal knowledge assistant. Answer ONLY using the provided context "
     "chunks below. Every claim must be traceable to a chunk. Cite sources inline as "
@@ -76,8 +91,13 @@ async def stream_answer(
     context_chunks: list[dict],
     history: list[tuple[str, str]],
     model: str | None = None,
+    usage_out: dict | None = None,
 ) -> AsyncIterator[str]:
-    """Yields the answer as incremental text deltas via the Responses API's streaming mode."""
+    """Yields the answer as incremental text deltas via the Responses API's streaming mode.
+
+    Pass a dict via usage_out to receive real token usage (input_tokens, output_tokens,
+    total_tokens) once streaming completes -- the caller's generator is already mid-stream
+    by the time usage is known, so it comes back this way rather than as a return value."""
     model = model or settings.generation_model_default
     input_items = _build_input(question, context_chunks, history)
 
@@ -87,3 +107,8 @@ async def stream_answer(
         async for event in stream:
             if event.type == "response.output_text.delta":
                 yield event.delta
+            elif event.type == "response.completed" and usage_out is not None:
+                usage = event.response.usage
+                usage_out["input_tokens"] = usage.input_tokens
+                usage_out["output_tokens"] = usage.output_tokens
+                usage_out["total_tokens"] = usage.total_tokens
