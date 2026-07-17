@@ -151,7 +151,13 @@ export default function ChatView() {
         scrollToBottom()
       },
       onDone: (payload) => {
-        updateAssistant({ streaming: false, totalTokens: payload?.total_tokens ?? null })
+        // Authoritative: retrieval's tentative citations from onMeta may not reflect
+        // what the answer actually grounded itself in (see backend soft-refusal check).
+        updateAssistant({
+          streaming: false,
+          totalTokens: payload?.total_tokens ?? null,
+          citations: payload?.citations ?? [],
+        })
         setSending(false)
       },
       onError: () => {
