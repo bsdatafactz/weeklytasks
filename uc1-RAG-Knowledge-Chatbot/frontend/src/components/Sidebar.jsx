@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { MessageCircle, LayoutDashboard } from 'lucide-react'
-import ThemeToggle from './ThemeToggle.jsx'
 
 /**
  * Shared nav shell for both pages -- Chat and Admin links always render in
@@ -47,10 +46,6 @@ export default function Sidebar({ activePage, children }) {
           {children}
         </div>
       )}
-
-      <div className="border-t border-neutral-200 px-3 py-3 dark:border-neutral-800">
-        <ThemeToggle />
-      </div>
     </aside>
   )
 }
