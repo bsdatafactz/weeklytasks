@@ -174,7 +174,7 @@ export default function ChatView() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex h-screen bg-df-navy">
+    <div className="flex h-screen bg-neutral-50 dark:bg-df-navy">
       <Sidebar activePage="chat">
         <ConversationList
           conversations={conversations}
@@ -186,7 +186,7 @@ export default function ChatView() {
       </Sidebar>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex shrink-0 items-center border-b border-neutral-800 px-3 py-2">
+        <header className="flex shrink-0 items-center border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
           <ModelSelector models={models} selected={selectedModel} onSelect={handleSelectModel} />
         </header>
 
@@ -213,7 +213,7 @@ export default function ChatView() {
                     key={question}
                     type="button"
                     onClick={() => handleSend(question)}
-                    className="rounded-full border border-neutral-800 bg-neutral-900/60 px-3.5 py-1.5 text-xs text-neutral-300 transition hover:border-df-orange/50 hover:text-neutral-100"
+                    className="rounded-full border border-neutral-300 bg-white px-3.5 py-1.5 text-xs text-neutral-600 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300 dark:hover:text-neutral-100"
                   >
                     {question}
                   </button>
@@ -230,7 +230,7 @@ export default function ChatView() {
                 ))}
               </div>
             </div>
-            <div className="shrink-0 border-t border-neutral-800 px-6 py-4">
+            <div className="shrink-0 border-t border-neutral-200 px-6 py-4 dark:border-neutral-800">
               <div className="mx-auto max-w-3xl">
                 <Composer value={input} onChange={setInput} onSubmit={handleSend} sending={sending} />
               </div>

@@ -24,7 +24,7 @@ export default function Composer({ value, onChange, onSubmit, sending, autoFocus
         e.preventDefault()
         onSubmit()
       }}
-      className="flex items-end gap-2 rounded-3xl border border-neutral-800 bg-neutral-900/80 px-4 py-2.5 shadow-lg transition focus-within:border-df-orange/50"
+      className="flex items-end gap-2 rounded-3xl border border-neutral-300 bg-white px-4 py-2.5 shadow-lg transition focus-within:border-df-orange/50 dark:border-neutral-800 dark:bg-neutral-900/80"
     >
       <textarea
         ref={textareaRef}
@@ -34,7 +34,7 @@ export default function Composer({ value, onChange, onSubmit, sending, autoFocus
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask a question about company policy"
-        className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
+        className="max-h-[200px] flex-1 resize-none bg-transparent py-1.5 text-neutral-900 placeholder:text-neutral-500 focus:outline-none dark:text-neutral-100"
       />
       <button
         type="submit"

@@ -13,5 +13,4 @@ router = APIRouter(prefix="/analytics", tags=["analytics"], dependencies=[Depend
 async def get_analytics(db: AsyncSession = Depends(get_db)) -> AnalyticsOut:
     totals = await analytics_repo.get_totals(db)
     usage_by_model = await analytics_repo.get_usage_by_model(db)
-    messages_per_day = await analytics_repo.get_messages_per_day(db)
-    return AnalyticsOut(totals=totals, usage_by_model=usage_by_model, messages_per_day=messages_per_day)
+    return AnalyticsOut(totals=totals, usage_by_model=usage_by_model)

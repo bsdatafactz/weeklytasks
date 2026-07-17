@@ -10,12 +10,16 @@ const MODEL_LABELS = {
 
 const markdownComponents = {
   p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold text-neutral-50">{children}</strong>,
+  strong: ({ children }) => (
+    <strong className="font-semibold text-neutral-950 dark:text-neutral-50">{children}</strong>
+  ),
   ul: ({ children }) => <ul className="mb-3 ml-5 list-disc space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="mb-3 ml-5 list-decimal space-y-1">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   code: ({ children }) => (
-    <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-[0.85em] text-df-orange">{children}</code>
+    <code className="rounded bg-neutral-200 px-1.5 py-0.5 text-[0.85em] text-df-orange dark:bg-neutral-800">
+      {children}
+    </code>
   ),
   a: ({ children, href }) => (
     <a href={href} target="_blank" rel="noreferrer" className="text-df-orange underline underline-offset-2">
@@ -38,7 +42,7 @@ export default function MessageBubble({ message }) {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-3xl bg-neutral-800 px-4 py-2.5 text-[15px] text-neutral-100">
+        <div className="max-w-[75%] rounded-3xl bg-neutral-200 px-4 py-2.5 text-[15px] text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
           {message.content}
         </div>
       </div>
@@ -48,7 +52,7 @@ export default function MessageBubble({ message }) {
   return (
     <div className="flex gap-3">
       <AssistantAvatar />
-      <div className="min-w-0 flex-1 pt-0.5 text-[15px] text-neutral-200">
+      <div className="min-w-0 flex-1 pt-0.5 text-[15px] text-neutral-800 dark:text-neutral-200">
         {message.injectionFlagged && (
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-md bg-df-red/10 px-2.5 py-1 text-xs text-df-red">
             <ShieldAlert className="size-3.5" strokeWidth={1.75} />
@@ -57,7 +61,7 @@ export default function MessageBubble({ message }) {
         )}
 
         {message.refused && !message.streaming && (
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-md bg-neutral-800/60 px-2.5 py-1 text-xs text-neutral-400">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-md bg-neutral-200/70 px-2.5 py-1 text-xs text-neutral-500 dark:bg-neutral-800/60 dark:text-neutral-400">
             <CircleSlash className="size-3.5" strokeWidth={1.75} />
             Out of scope for the indexed knowledge base
           </div>
@@ -68,9 +72,9 @@ export default function MessageBubble({ message }) {
         ) : (
           message.streaming && (
             <div className="flex gap-1 py-1">
-              <span className="size-1.5 animate-bounce rounded-full bg-neutral-500 [animation-delay:-0.3s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-neutral-500 [animation-delay:-0.15s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-neutral-500" />
+              <span className="size-1.5 animate-bounce rounded-full bg-neutral-400 [animation-delay:-0.3s] dark:bg-neutral-500" />
+              <span className="size-1.5 animate-bounce rounded-full bg-neutral-400 [animation-delay:-0.15s] dark:bg-neutral-500" />
+              <span className="size-1.5 animate-bounce rounded-full bg-neutral-400 dark:bg-neutral-500" />
             </div>
           )
         )}
@@ -88,7 +92,7 @@ export default function MessageBubble({ message }) {
         )}
 
         {!message.streaming && message.model && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-600">
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-600">
             <Cpu className="size-3" strokeWidth={1.75} />
             {MODEL_LABELS[message.model] ?? message.model}
             {message.totalTokens != null && (

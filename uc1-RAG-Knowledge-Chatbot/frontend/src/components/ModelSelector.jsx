@@ -22,7 +22,7 @@ export default function ModelSelector({ models, selected, onSelect }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-neutral-300 transition hover:bg-neutral-900"
+        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-900"
       >
         <Sparkles className="size-3.5 text-df-orange" strokeWidth={1.75} />
         {current?.label ?? selected}
@@ -30,7 +30,7 @@ export default function ModelSelector({ models, selected, onSelect }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900 shadow-xl">
+        <div className="absolute left-0 top-full z-10 mt-1 w-56 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
           {models.map((model) => (
             <button
               key={model.id}
@@ -39,7 +39,7 @@ export default function ModelSelector({ models, selected, onSelect }) {
                 onSelect(model.id)
                 setOpen(false)
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm text-neutral-200 transition hover:bg-neutral-800"
+              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <span>{model.label}</span>
               {model.id === selected && <Check className="size-3.5 text-df-orange" strokeWidth={2} />}
