@@ -21,16 +21,16 @@ class TestSniffFormat:
         # These two corpus files have non-HTML extensions but are actually HTML content --
         # the whole point of content-sniffing instead of trusting the extension.
         assert sniff_format(RESOURCES_DIR / "progressive-discipline-policy") == "html"
-        assert sniff_format(RESOURCES_DIR / "employee-handbook-sample.doc") == "html"
+        assert sniff_format(RESOURCES_DIR / "handbook-sample.doc") == "html"
 
     def test_real_pdf_and_docx_still_sniff_correctly(self):
-        assert sniff_format(RESOURCES_DIR / "attendance-policy.pdf") == "pdf"
-        assert sniff_format(RESOURCES_DIR / "remote-work-policy.docx") == "docx"
+        assert sniff_format(RESOURCES_DIR / "attendance.pdf") == "pdf"
+        assert sniff_format(RESOURCES_DIR / "remote-work.docx") == "docx"
 
     def test_markdown_extension_disambiguated_from_plain_text(self):
         # `magic` reports .md as generic text/plain; the extension is the only signal
         # that distinguishes markdown from plain text once content-sniffing says text/plain.
-        assert sniff_format(RESOURCES_DIR / "benefits-and-perks.md") == "markdown"
+        assert sniff_format(RESOURCES_DIR / "benefits.md") == "markdown"
 
 
 class TestSplitSections:

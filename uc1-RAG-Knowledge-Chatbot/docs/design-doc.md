@@ -18,13 +18,13 @@ build context so ingestion works in a container without a separate volume mount)
 inside the document, not just carried over from however the source published it — see the
 naming audit below.
 
-Includes `progressive-discipline-policy` and `employee-handbook-sample.doc`, both HTML
+Includes `progressive-discipline-policy` and `handbook-sample.doc`, both HTML
 content under a **deliberately kept** misleading extension. The ingestion loader sniffs actual
 content type (`python-magic`) rather than trusting the extension, so both are correctly parsed
 as HTML; confirmed by running the loader against the real corpus (all 19 files parse without
 error) and covered directly by `backend/tests/test_ingestion_service.py`.
 
-**Naming/content audit (2026-07-20):** every corpus file was opened and read, not just
+**Naming/content audit, round 1 (2026-07-20):** every corpus file was opened and read, not just
 trusted by filename, after a real accuracy problem traced back to corpus composition — a
 retirement question was surfacing a citation from a document about federal-employee
 separation codes. That audit found two documents that had nothing to do with employee HR
@@ -37,21 +37,36 @@ policy despite being in the corpus:
 
 Together these were **595 of the original 1,023 chunks (58%) — the majority of the entire
 index — despite being completely off-topic.** Both were removed. Three more files were
-misleadingly *named* (though on-topic enough to keep) and renamed to match their real content:
-`employeeguide.pdf` → `dol-fmla-employee-guide.pdf` (it's the DOL's FMLA guide, not a general
-employee guide), `ProgressiveDiscipline.html` → `dol-employment-law-guide.html` (it's the DOL's
-general Employment Law Guide, not specifically about progressive discipline), and
-`Gusto_How_to_Create_an_Employee_Handbook_final.pdf` → `gusto-handbook-writing-guide.pdf` (it's
-a guide teaching *how to write* a handbook, not itself a company policy). One legitimately
-on-topic document (`employee-handbook-nonprofits-small-business.pdf`, a real sample handbook
-from Public Counsel's Community Development Project) was added to the corpus. Retrieval
-testing deliberately includes queries against the smaller, more specific documents too, so the
-index isn't validated only against the largest files (see `retrieval-quality-note.md`).
+misleadingly *named* (though on-topic enough to keep) and renamed to match their real content —
+the DOL's FMLA guide, the DOL's general Employment Law Guide (not specifically about
+progressive discipline despite its original name), and Gusto's guide on *how to write* a
+handbook (not itself a company policy). One legitimately on-topic document (a real sample
+handbook from Public Counsel's Community Development Project for nonprofits/small businesses)
+was added to the corpus.
 
-`shrm-academic-hr-curriculum-guide.pdf` (SHRM's curriculum guidebook for university HR degree
-programs, 61 chunks) was kept in the corpus despite also not being company policy — it's
-lower-priority background material, not actively wrong the way the two removed documents were,
-and removing it was left as the owner's call rather than assumed.
+**Naming audit, round 2 (2026-07-20):** with 9 of 19 files touching "benefits" or "handbook" in
+some way, the descriptive-but-long names from round 1 (e.g.
+`employee-benefits-summary-template.docx`, `shrm-sample-employee-handbook-2023.docx`) were
+still hard to visually distinguish at a glance. Shortened every filename with a consistent
+prefix scheme so related documents group together and stay scannable:
+
+| Prefix | Files | What distinguishes each |
+|---|---|---|
+| `benefits-` | `benefits.md`, `benefits-enrollment.pdf`, `benefits-summary.docx` | perks/insurance narrative vs. the enrollment process vs. a numbers-only summary sheet |
+| `handbook-` | `handbook-nonprofit.pdf`, `handbook-sample.doc`, `handbook-indeed.pdf`, `handbook-howto-gusto.pdf`, `handbook-shrm.docx` | which source published it, or (for the Gusto one) that it teaches *how to write* a handbook rather than being one |
+
+Everything else got a shorter single/double-word name (`attendance.pdf`, `remote-work.docx`,
+`fmla-guide.pdf`, `hr-manual.docx`, `career-growth.md`, etc.). `progressive-discipline-policy`
+and `handbook-sample.doc` keep their exact names deliberately — see above.
+
+Retrieval testing deliberately includes queries against the smaller, more specific documents
+too, so the index isn't validated only against the largest files (see
+`retrieval-quality-note.md`).
+
+`shrm-hr-curriculum.pdf` (SHRM's curriculum guidebook for university HR degree programs, 61
+chunks) was kept in the corpus despite also not being company policy — it's lower-priority
+background material, not actively wrong the way the two removed documents were, and removing it
+was left as the owner's call rather than assumed.
 
 ## 3. Architecture
 
