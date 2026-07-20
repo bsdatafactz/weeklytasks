@@ -64,3 +64,18 @@
 .streaming-cursor {
   animation: cursor-blink 1s step-end infinite;
 }
+
+@keyframes sources-panel-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sources-panel {
+  animation: sources-panel-in 0.18s ease-out;
+}

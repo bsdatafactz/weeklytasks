@@ -24,7 +24,7 @@ class TestSniffFormat:
         assert sniff_format(RESOURCES_DIR / "employee-handbook-sample.doc") == "html"
 
     def test_real_pdf_and_docx_still_sniff_correctly(self):
-        assert sniff_format(RESOURCES_DIR / "Attendance-Policy.pdf") == "pdf"
+        assert sniff_format(RESOURCES_DIR / "attendance-policy.pdf") == "pdf"
         assert sniff_format(RESOURCES_DIR / "remote-work-policy.docx") == "docx"
 
     def test_markdown_extension_disambiguated_from_plain_text(self):

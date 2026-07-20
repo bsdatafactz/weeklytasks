@@ -12,6 +12,7 @@ import Composer from './Composer.jsx'
 import Sidebar from './Sidebar.jsx'
 import ConversationList from './ConversationList.jsx'
 import ModelSelector from './ModelSelector.jsx'
+import SourcesPanel from './SourcesPanel.jsx'
 
 const EXAMPLE_QUESTIONS = [
   'How many days per week can employees work remotely?',
@@ -43,6 +44,7 @@ export default function ChatView() {
   const [sending, setSending] = useState(false)
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || '')
+  const [sourcesPanel, setSourcesPanel] = useState(null)
   const conversationIdRef = useRef(null)
   const listRef = useRef(null)
 
@@ -81,6 +83,7 @@ export default function ChatView() {
     setActiveConversationId(null)
     setMessages([])
     setInput('')
+    setSourcesPanel(null)
   }
 
   async function handleSelectConversation(id) {
@@ -90,6 +93,7 @@ export default function ChatView() {
       conversationIdRef.current = id
       setActiveConversationId(id)
       setMessages(detail.messages.map(mapStoredMessage))
+      setSourcesPanel(null)
     } catch {
       // leave current view as-is if the fetch fails
     }
@@ -232,7 +236,7 @@ export default function ChatView() {
             <div ref={listRef} className="flex-1 overflow-y-auto">
               <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
                 {messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageBubble key={message.id} message={message} onOpenSources={setSourcesPanel} />
                 ))}
               </div>
             </div>
@@ -244,6 +248,8 @@ export default function ChatView() {
           </>
         )}
       </div>
+
+      {sourcesPanel && <SourcesPanel citations={sourcesPanel} onClose={() => setSourcesPanel(null)} />}
     </div>
   )
 }

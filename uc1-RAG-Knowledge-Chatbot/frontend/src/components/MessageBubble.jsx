@@ -1,6 +1,5 @@
 import Markdown from 'react-markdown'
-import { ShieldAlert, CircleSlash, Sparkles, Cpu } from 'lucide-react'
-import CitationChip from './CitationChip.jsx'
+import { ShieldAlert, CircleSlash, Sparkles, Cpu, FileText } from 'lucide-react'
 
 const MODEL_LABELS = {
   'gpt-5': 'GPT-5',
@@ -36,7 +35,7 @@ function AssistantAvatar() {
   )
 }
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, onOpenSources }) {
   const isUser = message.role === 'user'
 
   if (isUser) {
@@ -84,11 +83,14 @@ export default function MessageBubble({ message }) {
         )}
 
         {!message.streaming && message.citations?.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {message.citations.map((citation, i) => (
-              <CitationChip key={`${citation.document_id}-${i}`} citation={citation} />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => onOpenSources?.(message.citations)}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
+          >
+            <FileText className="size-3 text-df-orange" strokeWidth={1.75} />
+            Sources · {message.citations.length}
+          </button>
         )}
 
         {!message.streaming && message.model && (

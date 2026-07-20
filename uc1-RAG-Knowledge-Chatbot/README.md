@@ -16,7 +16,7 @@ company policy/benefits/procedures, grounded only in the document corpus in `bac
 
 ```
 backend/            FastAPI app: routers -> services -> repositories, Alembic migrations
-backend/resources/  source corpus (9 PDF, 4 DOCX, 4 HTML, 3 MD — 20 docs), baked into the
+backend/resources/  source corpus (8 PDF, 4 DOCX, 4 HTML, 3 MD — 19 docs), baked into the
                      backend Docker image so ingestion works out of the box in a container
 frontend/           React chat UI + admin view
 docs/               design doc, architecture diagram, ERD, pattern justification,

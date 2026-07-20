@@ -7,7 +7,7 @@ settings = get_settings()
 # Tolerates both the straight ASCII apostrophe and the curly Unicode one (U+2019) --
 # generated text (GPT-5 in particular) reliably uses the latter, and a regex hardcoded
 # to "'" only silently fails to match "don't" written as "don't" (differs from what
-# it looks like at a glance -- see the is_soft_refusal bug this caused).
+# it looks like at a glance).
 _APOS = "['’]"
 
 _INJECTION_PATTERNS = [
@@ -40,18 +40,35 @@ def should_refuse(top_score: float | None) -> bool:
     return top_score < settings.retrieval_score_threshold
 
 
-# The retrieval-score gate is a coarse "is anything loosely similar in the index"
-# check -- it can't verify the retrieved chunks actually answer *this* question. A
-# borderline-scoring but irrelevant chunk (e.g. generic handbook boilerplate for an
-# unrelated question) can clear the threshold and still not ground a real answer.
-# The model itself is instructed to say so when that happens (see SYSTEM_PROMPT) --
-# this catches that signal after the fact so citations aren't attached to an answer
-# that never actually used them.
-_SOFT_REFUSAL_RE = re.compile(
-    rf"\bi don{_APOS}?t have\b.{{0,60}}\b(information|data|details)\b.{{0,80}}\bknowledge base\b",
-    re.IGNORECASE | re.DOTALL,
-)
+# A borderline-scoring but irrelevant chunk (e.g. generic handbook boilerplate for an
+# unrelated question) can clear the coarse retrieval-score gate alongside genuinely
+# relevant ones -- e.g. asking about retirement pulls in an on-topic 401(k) chunk *and*
+# an unrelated FMLA-leave chunk that scored just high enough. The model is instructed to
+# cite inline as "[filename, chunk_ref]" (see generation_service.SYSTEM_PROMPT) for
+# exactly this reason: only chunks whose marker actually appears in the answer were used
+# to ground it.
+#
+# An earlier version of this used a separate regex to detect a full "I don't have that"
+# refusal and blanked out every citation whenever it matched -- but a hedged, *partial*
+# answer ("I don't have an exact number, but here's what the docs do say [...]") also
+# matches that phrasing while still citing real sources, so the blunt regex wiped
+# legitimate citations off a substantive answer. Matching per-chunk against what the
+# answer actually cites handles both cases correctly on its own: a true refusal cites
+# nothing and naturally reduces to an empty list, and a hedged-but-real answer keeps
+# whatever it actually grounded itself in.
+#
+# The model doesn't always cite one bracket per source -- it sometimes bundles several
+# as "[fileA, refA; fileB, refB]" in a single bracket despite the system prompt asking
+# for one each. Matching the whole "[filename, chunk_ref]" string as one literal
+# substring misses that case, so each bracket group is checked for both pieces
+# co-occurring rather than requiring an exact bracket-per-citation match.
+_BRACKET_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 
 
-def is_soft_refusal(answer: str) -> bool:
-    return bool(_SOFT_REFUSAL_RE.search(answer))
+def filter_cited_chunks(answer: str, chunks: list[dict]) -> list[dict]:
+    bracket_groups = _BRACKET_GROUP_RE.findall(answer)
+    return [
+        c
+        for c in chunks
+        if any(c["filename"] in group and c["chunk_ref"] in group for group in bracket_groups)
+    ]

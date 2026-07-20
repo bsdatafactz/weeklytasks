@@ -96,12 +96,11 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
             answer = "".join(parts)
 
         # The retrieval-score gate can't verify the retrieved chunks actually answer
-        # *this* question -- a borderline-scoring but irrelevant chunk can clear it and
-        # still not ground a real answer. If the model's own answer says as much, the
-        # citations it was given were never actually used -- drop them, even though
-        # retrieval "passed".
-        soft_refused = (not refused) and guardrail_service.is_soft_refusal(answer)
-        final_citations = [] if (refused or soft_refused) else citations_payload
+        # *this* question -- a borderline-scoring but irrelevant chunk can clear it
+        # alongside genuinely relevant ones. Keep only the citations the answer actually
+        # grounds itself in; a true refusal cites nothing and this naturally reduces to
+        # an empty list on its own (see filter_cited_chunks).
+        final_citations = [] if refused else guardrail_service.filter_cited_chunks(answer, citations_payload)
 
         # Fresh session: the request-scoped `db` above isn't guaranteed to still be open
         # by the time this generator resumes after streaming starts.
@@ -117,7 +116,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
                 total_tokens=usage.get("total_tokens"),
             )
             if final_citations:
-                await citation_repo.add_citations(db2, assistant_message.id, chunks)
+                await citation_repo.add_citations(db2, assistant_message.id, final_citations)
             await db2.commit()
 
         yield _sse({"type": "done", "total_tokens": usage.get("total_tokens"), "citations": final_citations})

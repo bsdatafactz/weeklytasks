@@ -4,7 +4,7 @@
 
 Employees need quick, trustworthy answers to policy/benefits/procedure questions without
 digging through a stack of PDFs, DOCX files, and wiki pages. Today those answers live
-scattered across 20 source documents in 4 formats. This project builds an internal knowledge
+scattered across 19 source documents in 4 formats. This project builds an internal knowledge
 assistant that answers questions **grounded only in that corpus** — with citations back to
 the source document and section, a refusal path for out-of-scope questions, and resistance to
 prompt-injection attempts — so employees get a fast, accurate, auditable answer instead of an
@@ -12,18 +12,46 @@ LLM improvising from general knowledge.
 
 ## 2. Corpus
 
-20 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` (kept inside the backend's Docker
-build context so ingestion works in a container without a separate volume mount): 9 PDF,
-4 DOCX, 4 HTML, 3 Markdown —
-including `progressive-discipline-policy` and `employee-handbook-sample.doc`, both HTML
-content under a misleading extension. The ingestion loader sniffs actual content type
-(`python-magic`) rather than trusting the extension, so both are correctly parsed as HTML;
-confirmed by running the loader against the real corpus (all 20 files parse without error,
-1,023 chunks total). Two PDFs are large (~9.5MB, ~6.8MB) and dominate raw chunk count (53 and
-19 chunks respectively) — dwarfed by `deo_handbook.pdf` (322 chunks) and `wfahandbook.pdf`
-(273 chunks), which are larger still. Retrieval testing deliberately includes queries against
-the smaller, more specific documents too, so the index isn't validated only against the
-largest files.
+19 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` (kept inside the backend's Docker
+build context so ingestion works in a container without a separate volume mount): 8 PDF,
+4 DOCX, 4 HTML, 3 Markdown — 481 chunks total. Filenames are chosen to describe what's actually
+inside the document, not just carried over from however the source published it — see the
+naming audit below.
+
+Includes `progressive-discipline-policy` and `employee-handbook-sample.doc`, both HTML
+content under a **deliberately kept** misleading extension. The ingestion loader sniffs actual
+content type (`python-magic`) rather than trusting the extension, so both are correctly parsed
+as HTML; confirmed by running the loader against the real corpus (all 19 files parse without
+error) and covered directly by `backend/tests/test_ingestion_service.py`.
+
+**Naming/content audit (2026-07-20):** every corpus file was opened and read, not just
+trusted by filename, after a real accuracy problem traced back to corpus composition — a
+retirement question was surfacing a citation from a document about federal-employee
+separation codes. That audit found two documents that had nothing to do with employee HR
+policy despite being in the corpus:
+
+- `deo_handbook.pdf` — actually the U.S. Office of Personnel Management's *Delegated
+  Examining Operations Handbook*, procedures for federal hiring examiners. 322 chunks.
+- `wfahandbook.pdf` — actually the U.S. Department of Transportation's *Workforce Analysis
+  Handbook*, internal org-design methodology for federal agencies. 273 chunks.
+
+Together these were **595 of the original 1,023 chunks (58%) — the majority of the entire
+index — despite being completely off-topic.** Both were removed. Three more files were
+misleadingly *named* (though on-topic enough to keep) and renamed to match their real content:
+`employeeguide.pdf` → `dol-fmla-employee-guide.pdf` (it's the DOL's FMLA guide, not a general
+employee guide), `ProgressiveDiscipline.html` → `dol-employment-law-guide.html` (it's the DOL's
+general Employment Law Guide, not specifically about progressive discipline), and
+`Gusto_How_to_Create_an_Employee_Handbook_final.pdf` → `gusto-handbook-writing-guide.pdf` (it's
+a guide teaching *how to write* a handbook, not itself a company policy). One legitimately
+on-topic document (`employee-handbook-nonprofits-small-business.pdf`, a real sample handbook
+from Public Counsel's Community Development Project) was added to the corpus. Retrieval
+testing deliberately includes queries against the smaller, more specific documents too, so the
+index isn't validated only against the largest files (see `retrieval-quality-note.md`).
+
+`shrm-academic-hr-curriculum-guide.pdf` (SHRM's curriculum guidebook for university HR degree
+programs, 61 chunks) was kept in the corpus despite also not being company policy — it's
+lower-priority background material, not actively wrong the way the two removed documents were,
+and removing it was left as the owner's call rather than assumed.
 
 ## 3. Architecture
 
