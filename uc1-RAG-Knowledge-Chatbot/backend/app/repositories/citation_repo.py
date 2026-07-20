@@ -1,9 +1,14 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Citation, Document
+
+
+async def delete_by_message(db: AsyncSession, message_id: uuid.UUID) -> None:
+    await db.execute(delete(Citation).where(Citation.message_id == message_id))
+    await db.flush()
 
 
 async def add_citations(db: AsyncSession, message_id: uuid.UUID, citations: list[dict]) -> list[Citation]:

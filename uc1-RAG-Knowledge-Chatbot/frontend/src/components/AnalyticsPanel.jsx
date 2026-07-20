@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MessagesSquare, MessageSquare, CircleSlash, Coins } from 'lucide-react'
+import { MessagesSquare, MessageSquare, Coins } from 'lucide-react'
 import { fetchAnalytics } from '../lib/api.js'
 
 const MODEL_LABELS = {
@@ -67,19 +67,12 @@ export default function AnalyticsPanel() {
 
   const { totals, usage_by_model: usageByModel } = data
   const maxTokens = Math.max(...usageByModel.map((r) => r.total_tokens), 1)
-  const refusalRate = totals.question_count > 0 ? Math.round((totals.refused_count / totals.question_count) * 100) : 0
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <StatTile icon={MessagesSquare} label="Conversations" value={totals.conversation_count} />
         <StatTile icon={MessageSquare} label="Questions asked" value={totals.question_count} />
-        <StatTile
-          icon={CircleSlash}
-          label="Refused"
-          value={totals.refused_count}
-          sublabel={`${refusalRate}% of questions`}
-        />
         <StatTile icon={Coins} label="Tokens used" value={totals.total_tokens} />
       </div>
 

@@ -1,20 +1,17 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
 const API_KEY = import.meta.env.VITE_APP_API_KEY ?? 'dev-local-key'
 
-/**
- * POSTs a chat message and consumes the server-sent-events stream, invoking
- * callbacks as events arrive: onMeta (citations/refused/injection_flagged),
- * onDelta (incremental answer text), onDone.
- */
-export async function streamChat({ message, conversationId, model, onMeta, onDelta, onDone, onError }) {
+/** Shared by streamChat and regenerateAnswer -- both POST a body and consume an
+ * identically-shaped server-sent-events stream, differing only in endpoint/body. */
+async function streamSSE(path, body, { onMeta, onDelta, onDone, onError }) {
   try {
-    const response = await fetch(`${API_BASE}/api/v1/chat`, {
+    const response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
       },
-      body: JSON.stringify({ message, conversation_id: conversationId ?? null, model: model ?? null }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok || !response.body) {
@@ -47,6 +44,27 @@ export async function streamChat({ message, conversationId, model, onMeta, onDel
   } catch (err) {
     onError?.(err)
   }
+}
+
+/**
+ * POSTs a chat message and consumes the server-sent-events stream, invoking
+ * callbacks as events arrive: onMeta (citations/refused/injection_flagged),
+ * onDelta (incremental answer text), onDone.
+ */
+export async function streamChat({ message, conversationId, model, ...callbacks }) {
+  await streamSSE(
+    '/api/v1/chat',
+    { message, conversation_id: conversationId ?? null, model: model ?? null },
+    callbacks,
+  )
+}
+
+/**
+ * Redoes the answer for a question already asked -- deletes and replaces the stale
+ * assistant message server-side rather than appending a duplicate question/answer pair.
+ */
+export async function regenerateAnswer({ messageId, model, ...callbacks }) {
+  await streamSSE('/api/v1/chat/regenerate', { message_id: messageId, model: model ?? null }, callbacks)
 }
 
 export async function fetchModels() {

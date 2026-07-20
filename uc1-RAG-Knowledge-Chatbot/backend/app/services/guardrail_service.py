@@ -65,6 +65,24 @@ def should_refuse(top_score: float | None) -> bool:
 _BRACKET_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 
 
+# filter_cited_chunks alone still leaves sources attached to answers that *open* with
+# "I don't have that information" and only mention real sources as supporting color for
+# the disclaimer (e.g. "...retiree benefits aren't described, though active-employee
+# benefits include X, Y, Z [cited]"). That's a real citation by the bracket-matching
+# rule, but showing a "Sources" panel on an answer whose headline is "I don't have this"
+# reads as contradictory to a user. Only the opening is checked (not "anywhere in the
+# text", which is what caused the false positives filter_cited_chunks itself replaced) --
+# a disclaimer later in an otherwise-confident answer is a normal hedge, not a refusal.
+_DISCLAIMER_LEAD_RE = re.compile(
+    rf"^\s*(?:[-*]\s*|\d+\.\s*)?i don{_APOS}?t have\b",
+    re.IGNORECASE,
+)
+
+
+def leads_with_disclaimer(answer: str) -> bool:
+    return bool(_DISCLAIMER_LEAD_RE.match(answer))
+
+
 def filter_cited_chunks(answer: str, chunks: list[dict]) -> list[dict]:
     bracket_groups = _BRACKET_GROUP_RE.findall(answer)
     return [

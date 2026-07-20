@@ -1,10 +1,23 @@
 import Markdown from 'react-markdown'
-import { ShieldAlert, CircleSlash, Sparkles, Cpu, FileText } from 'lucide-react'
+import { ShieldAlert, CircleSlash, Sparkles, Cpu, FileText, RotateCcw } from 'lucide-react'
 
 const MODEL_LABELS = {
   'gpt-5': 'GPT-5',
   'gpt-5.5': 'GPT-5.5',
   'deepseek-v3.2': 'DeepSeek V3.2',
+}
+
+// The model cites sources inline as "[filename, chunk_ref]" (see generation_service.SYSTEM_PROMPT)
+// so the backend can tell which retrieved chunks it actually used -- but now that there's a
+// dedicated Sources panel, showing that raw bracket text in the message itself is just noise.
+// Every real citation marker contains a comma ("file.pdf, Page 1"); a plain markdown link
+// wouldn't, so this only strips citation-shaped brackets.
+function stripCitationMarkers(text) {
+  return text
+    .replace(/\[[^\]]*,[^\]]*\]/g, '')
+    .replace(/[ \t]+([.,;:])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
 }
 
 const markdownComponents = {
@@ -35,7 +48,7 @@ function AssistantAvatar() {
   )
 }
 
-export default function MessageBubble({ message, onOpenSources }) {
+export default function MessageBubble({ message, onOpenSources, onRegenerate, canRegenerate }) {
   const isUser = message.role === 'user'
 
   if (isUser) {
@@ -67,7 +80,7 @@ export default function MessageBubble({ message, onOpenSources }) {
         )}
 
         {message.content ? (
-          <Markdown components={markdownComponents}>{message.content}</Markdown>
+          <Markdown components={markdownComponents}>{stripCitationMarkers(message.content)}</Markdown>
         ) : (
           message.streaming && (
             <div className="flex gap-1 py-1">
@@ -82,15 +95,29 @@ export default function MessageBubble({ message, onOpenSources }) {
           <span className="streaming-cursor ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 bg-df-orange" />
         )}
 
-        {!message.streaming && message.citations?.length > 0 && (
-          <button
-            type="button"
-            onClick={() => onOpenSources?.(message.citations)}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
-          >
-            <FileText className="size-3 text-df-orange" strokeWidth={1.75} />
-            Sources · {message.citations.length}
-          </button>
+        {!message.streaming && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {message.citations?.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onOpenSources?.(message.citations)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
+              >
+                <FileText className="size-3 text-df-orange" strokeWidth={1.75} />
+                Sources · {message.citations.length}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onRegenerate?.(message.id)}
+              disabled={!canRegenerate}
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
+            >
+              <RotateCcw className="size-3" strokeWidth={1.75} />
+              Regenerate
+            </button>
+          </div>
         )}
 
         {!message.streaming && message.model && (

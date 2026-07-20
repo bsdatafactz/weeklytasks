@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import {
   streamChat,
+  regenerateAnswer,
   fetchConversations,
   fetchConversationDetail,
   deleteConversation,
@@ -13,6 +14,7 @@ import Sidebar from './Sidebar.jsx'
 import ConversationList from './ConversationList.jsx'
 import ModelSelector from './ModelSelector.jsx'
 import SourcesPanel from './SourcesPanel.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 
 const EXAMPLE_QUESTIONS = [
   'How many days per week can employees work remotely?',
@@ -109,6 +111,42 @@ export default function ChatView() {
     }
   }
 
+  // Shared by sendMessage and regenerateMessage -- onDelta/onDone/onError update the
+  // same assistant bubble in place regardless of which endpoint produced the stream;
+  // only onMeta differs (a fresh conversation needs conversationIdRef/sidebar updates
+  // that a regenerate, which reuses an existing conversation, doesn't).
+  function makeAssistantCallbacks(assistantId) {
+    function updateAssistant(patch) {
+      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)))
+    }
+    return {
+      updateAssistant,
+      onDelta: (delta) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + delta } : m)),
+        )
+        scrollToBottom()
+      },
+      onDone: (payload) => {
+        // Authoritative: retrieval's tentative citations from onMeta may not reflect
+        // what the answer actually grounded itself in (see backend citation filtering).
+        updateAssistant({
+          streaming: false,
+          totalTokens: payload?.total_tokens ?? null,
+          citations: payload?.citations ?? [],
+        })
+        setSending(false)
+      },
+      onError: () => {
+        updateAssistant({
+          streaming: false,
+          content: 'Something went wrong reaching the backend. Check that the API is running.',
+        })
+        setSending(false)
+      },
+    }
+  }
+
   async function sendMessage(text) {
     if (!text || sending) return
 
@@ -129,9 +167,7 @@ export default function ChatView() {
     setSending(true)
     scrollToBottom()
 
-    function updateAssistant(patch) {
-      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)))
-    }
+    const { updateAssistant, onDelta, onDone, onError } = makeAssistantCallbacks(assistantId)
 
     await streamChat({
       message: text,
@@ -148,29 +184,41 @@ export default function ChatView() {
           model: meta.model,
         })
       },
-      onDelta: (delta) => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + delta } : m)),
-        )
-        scrollToBottom()
-      },
-      onDone: (payload) => {
-        // Authoritative: retrieval's tentative citations from onMeta may not reflect
-        // what the answer actually grounded itself in (see backend soft-refusal check).
+      onDelta,
+      onDone,
+      onError,
+    })
+  }
+
+  async function regenerateMessage(assistantId) {
+    if (sending) return
+
+    setSending(true)
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === assistantId
+          ? { ...m, content: '', streaming: true, refused: false, injectionFlagged: false, citations: [] }
+          : m,
+      ),
+    )
+    scrollToBottom()
+
+    const { updateAssistant, onDelta, onDone, onError } = makeAssistantCallbacks(assistantId)
+
+    await regenerateAnswer({
+      messageId: assistantId,
+      model: selectedModel,
+      onMeta: (meta) => {
         updateAssistant({
-          streaming: false,
-          totalTokens: payload?.total_tokens ?? null,
-          citations: payload?.citations ?? [],
+          refused: meta.refused,
+          injectionFlagged: meta.injection_flagged,
+          citations: meta.citations,
+          model: meta.model,
         })
-        setSending(false)
       },
-      onError: () => {
-        updateAssistant({
-          streaming: false,
-          content: 'Something went wrong reaching the backend. Check that the API is running.',
-        })
-        setSending(false)
-      },
+      onDelta,
+      onDone,
+      onError,
     })
   }
 
@@ -196,8 +244,9 @@ export default function ChatView() {
       </Sidebar>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex shrink-0 items-center border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
+        <header className="flex shrink-0 items-center justify-between border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
           <ModelSelector models={models} selected={selectedModel} onSelect={handleSelectModel} />
+          <ThemeToggle />
         </header>
 
         {!hasMessages ? (
@@ -236,7 +285,13 @@ export default function ChatView() {
             <div ref={listRef} className="flex-1 overflow-y-auto">
               <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
                 {messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} onOpenSources={setSourcesPanel} />
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    onOpenSources={setSourcesPanel}
+                    onRegenerate={regenerateMessage}
+                    canRegenerate={!sending}
+                  />
                 ))}
               </div>
             </div>

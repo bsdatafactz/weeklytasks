@@ -31,6 +31,34 @@ async def add_message(
     return message
 
 
+async def get_message(db: AsyncSession, message_id: uuid.UUID) -> Message | None:
+    return await db.get(Message, message_id)
+
+
+async def update_message(
+    db: AsyncSession,
+    message_id: uuid.UUID,
+    *,
+    content: str,
+    model: str | None,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    total_tokens: int | None,
+) -> None:
+    """Used by regenerate -- updates the existing row in place (same id, same
+    created_at/ordering) rather than delete-then-recreate, so the client's reference to
+    this message's id stays valid for a second regenerate on the same bubble."""
+    message = await db.get(Message, message_id)
+    if message is None:
+        return
+    message.content = content
+    message.model = model
+    message.input_tokens = input_tokens
+    message.output_tokens = output_tokens
+    message.total_tokens = total_tokens
+    await db.flush()
+
+
 async def recent_history(db: AsyncSession, conversation_id: uuid.UUID, limit: int = 10) -> list[Message]:
     result = await db.execute(
         select(Message)
