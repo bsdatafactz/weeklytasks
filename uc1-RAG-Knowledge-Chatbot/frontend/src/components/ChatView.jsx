@@ -232,7 +232,7 @@ export default function ChatView() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex h-screen bg-neutral-50 dark:bg-df-navy">
+    <div className="page-fade-in flex h-screen bg-neutral-50 dark:bg-df-navy">
       <Sidebar activePage="chat">
         <ConversationList
           conversations={conversations}

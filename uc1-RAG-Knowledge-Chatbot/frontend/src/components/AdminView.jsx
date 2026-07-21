@@ -52,7 +52,7 @@ export default function AdminView() {
   const totalChunks = documents.reduce((sum, d) => sum + (d.chunk_count ?? 0), 0)
 
   return (
-    <div className="flex h-screen bg-neutral-50 dark:bg-df-navy">
+    <div className="page-fade-in flex h-screen bg-neutral-50 dark:bg-df-navy">
       <Sidebar activePage="admin" />
 
       <div className="flex flex-1 flex-col">

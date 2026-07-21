@@ -12,9 +12,17 @@ const MODEL_LABELS = {
 // dedicated Sources panel, showing that raw bracket text in the message itself is just noise.
 // Every real citation marker contains a comma ("file.pdf, Page 1"); a plain markdown link
 // wouldn't, so this only strips citation-shaped brackets.
+//
+// This runs on the accumulated text on every streamed delta, not just once the message is
+// complete -- a citation bracket often arrives split across two deltas (e.g. one delta ends
+// "...policy [file.pdf" and the next continues ", Page 1]. More text"). Between those two
+// renders there's a real, currently-open "[" with no closing "]" yet, which the regex above
+// can't match -- so the raw bracket text flashes on screen for one frame until the closing
+// delta arrives. Stripping a trailing unclosed bracket too closes that gap.
 function stripCitationMarkers(text) {
   return text
     .replace(/\[[^\]]*,[^\]]*\]/g, '')
+    .replace(/\[[^\]]*$/, '')
     .replace(/[ \t]+([.,;:])/g, '$1')
     .replace(/[ \t]{2,}/g, ' ')
     .trim()

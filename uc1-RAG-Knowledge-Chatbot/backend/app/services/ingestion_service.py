@@ -20,6 +20,7 @@ from azure.search.documents.indexes.models import (
     VectorSearch,
     VectorSearchProfile,
 )
+from azure.search.documents.aio import SearchClient
 from bs4 import BeautifulSoup
 from docx import Document as DocxDocument
 from openai import AsyncOpenAI
@@ -29,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.azure_foundry_client import get_openai_client
 from app.clients.azure_search_client import get_search_client, get_search_index_client
 from app.config import get_settings
+from app.db import async_session_factory
 from app.repositories import document_repo, indexing_run_repo
 from app.services.generation_service import embed_text
 
@@ -246,56 +248,80 @@ async def ensure_index_exists() -> None:
 
 EMBED_CONCURRENCY = 20
 
+# Documents used to ingest strictly one at a time -- correct for durability (each one
+# commits only after its own Search upload succeeds, see the per-document comment below)
+# but meant total wall-clock time was the *sum* of every document's time, not the max.
+# This corpus is lopsided (hr-manual.docx alone is 132 of 481 chunks), so the four
+# largest documents dominated a ~90s run despite chunk-level embedding already being
+# concurrent. Running documents concurrently too (bounded, so as not to spike Azure
+# Search/Foundry traffic all at once) cuts wall-clock roughly toward the slowest single
+# document instead of the sum of all of them, without weakening the per-document
+# atomicity -- each document still gets its own dedicated DB session and commits
+# independently, since AsyncSession isn't safe to share across concurrent coroutines.
+DOC_CONCURRENCY = 4
+
+
+async def _ingest_one(
+    path: Path,
+    search_client: SearchClient,
+    embed_client: AsyncOpenAI,
+    embed_semaphore: asyncio.Semaphore,
+) -> int:
+    async def embed_bounded(text: str) -> list[float]:
+        async with embed_semaphore:
+            return await embed_text(text, client=embed_client)
+
+    async with async_session_factory() as doc_db:
+        checksum = _checksum(path)
+        document = await document_repo.upsert_document(
+            doc_db, filename=path.name, format=sniff_format(path), source_path=str(path), checksum=checksum
+        )
+
+        loaded = load_document(path)
+        chunks = chunk_document(loaded)
+
+        vectors = await asyncio.gather(*(embed_bounded(chunk.content) for chunk in chunks))
+        search_docs = [
+            {
+                "id": f"{document.id}-{i}",
+                "document_id": str(document.id),
+                "filename": document.filename,
+                "chunk_ref": chunk.chunk_ref,
+                "content": chunk.content,
+                "content_vector": vector,
+            }
+            for i, (chunk, vector) in enumerate(zip(chunks, vectors, strict=True))
+        ]
+
+        if search_docs:
+            await search_client.upload_documents(search_docs)
+
+        await document_repo.mark_indexed(doc_db, document.id, len(chunks))
+        await doc_db.commit()  # durable per-document: a later failure (this document or
+        # another running concurrently) can't orphan this document's Search entries
+        # against a rolled-back Postgres row (see incident in commit history)
+
+    logger.info("ingested %s: %d chunks", path.name, len(chunks))
+    return len(chunks)
+
 
 async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
     await ensure_index_exists()
     run = await indexing_run_repo.start_run(db, triggered_by=triggered_by)
 
-    total_docs = 0
-    total_chunks = 0
-    semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
+    embed_semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
+    doc_semaphore = asyncio.Semaphore(DOC_CONCURRENCY)
 
-    async def embed_bounded(embed_client: AsyncOpenAI, text: str) -> list[float]:
-        async with semaphore:
-            return await embed_text(text, client=embed_client)
+    async def ingest_one_bounded(path: Path, search_client: SearchClient, embed_client: AsyncOpenAI) -> int:
+        async with doc_semaphore:
+            return await _ingest_one(path, search_client, embed_client, embed_semaphore)
 
     async with get_search_client() as search_client, get_openai_client() as embed_client:
-        for path in sorted(RESOURCES_DIR.iterdir()):
-            if not path.is_file():
-                continue
+        paths = [path for path in sorted(RESOURCES_DIR.iterdir()) if path.is_file()]
+        chunk_counts = await asyncio.gather(*(ingest_one_bounded(path, search_client, embed_client) for path in paths))
 
-            checksum = _checksum(path)
-            document = await document_repo.upsert_document(
-                db, filename=path.name, format=sniff_format(path), source_path=str(path), checksum=checksum
-            )
-
-            loaded = load_document(path)
-            chunks = chunk_document(loaded)
-
-            vectors = await asyncio.gather(*(embed_bounded(embed_client, chunk.content) for chunk in chunks))
-            search_docs = [
-                {
-                    "id": f"{document.id}-{i}",
-                    "document_id": str(document.id),
-                    "filename": document.filename,
-                    "chunk_ref": chunk.chunk_ref,
-                    "content": chunk.content,
-                    "content_vector": vector,
-                }
-                for i, (chunk, vector) in enumerate(zip(chunks, vectors, strict=True))
-            ]
-
-            if search_docs:
-                await search_client.upload_documents(search_docs)
-
-            await document_repo.mark_indexed(db, document.id, len(chunks))
-            await db.commit()  # durable per-document: a later failure can't orphan this document's
-            # Search entries against a rolled-back Postgres row (see incident in commit history)
-            total_docs += 1
-            total_chunks += len(chunks)
-            logger.info(
-                "ingested %s: %d chunks (%d docs / %d chunks so far)", path.name, len(chunks), total_docs, total_chunks
-            )
+    total_docs = len(paths)
+    total_chunks = sum(chunk_counts)
 
     await indexing_run_repo.finish_run(
         db, run.id, doc_count=total_docs, chunk_count=total_chunks, status="completed"
