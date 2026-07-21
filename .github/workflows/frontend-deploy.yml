@@ -1,6 +1,7 @@
 name: Deploy frontend to Azure Static Web Apps
 
 on:
+  # retry trigger
   push:
     branches:
       - main
