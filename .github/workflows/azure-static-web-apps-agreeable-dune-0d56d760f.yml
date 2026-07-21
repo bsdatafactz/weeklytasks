@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'day1-hello-world/frontend/**'
+      - 'uc1-RAG-Knowledge-Chatbot/frontend/**'
       - '.github/workflows/azure-static-web-apps-agreeable-dune-0d56d760f.yml'
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ jobs:
     name: Build and Deploy Job
     defaults:
       run:
-        working-directory: ./day1-hello-world/frontend
+        working-directory: ./uc1-RAG-Knowledge-Chatbot/frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +27,9 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_API_BASE: https://rag-bs-backend.azurewebsites.net
+          VITE_APP_API_KEY: ${{ secrets.VITE_APP_API_KEY }}
         run: npm run build
 
       - name: Build And Deploy
@@ -36,6 +39,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_AGREEABLE_DUNE_0D56D760F }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/day1-hello-world/frontend"
+          app_location: "/uc1-RAG-Knowledge-Chatbot/frontend"
           output_location: "dist"
           skip_app_build: true
