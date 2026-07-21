@@ -209,6 +209,24 @@ alternatives.
   the main cost driver at scale is generation tokens, not retrieval or storage, so caching and
   prompt/context-size discipline matter more than infrastructure sizing.
 
+## 6a. Environment isolation (local dev vs. deployed)
+
+A real incident, found 2026-07-21: local Docker and the Azure deployment were both
+pointed at the same Azure AI Search index. Each document's Postgres row and its Search
+chunks are created together in one ingestion run and reference each other by id —
+whichever environment reindexes *last* overwrites the shared index with its own
+Postgres's document ids, silently orphaning the *other* environment's citations
+(`citation_repo.add_citations` starts failing a foreign-key check, caught by the
+try/except added for a different, earlier incident, which correctly avoids crashing the
+response but also correctly stops showing any sources at all). Retrieval, generation,
+and citation-matching were all working correctly the whole time — the citations were
+just failing to save against the wrong environment's database.
+
+Fixed by giving local dev its own index name (`uc1-rag-index-local` vs. production's
+`uc1-rag-index`) on the same Azure AI Search *service* — sharing the service is fine and
+saves provisioning a second one, but the index itself must not be shared between
+environments with separate Postgres databases. See `backend/.env.example`.
+
 ## 7. Retrieval quality note
 
 See `retrieval-quality-note.md` — 10 real test questions against the live index, including
