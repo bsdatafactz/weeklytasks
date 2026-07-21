@@ -1,6 +1,7 @@
 name: Deploy frontend to GitHub Pages
 
 on:
+  # retry now that Pages is enabled
   push:
     branches:
       - main
