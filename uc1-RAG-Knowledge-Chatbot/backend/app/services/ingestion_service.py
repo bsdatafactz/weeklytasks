@@ -61,11 +61,11 @@ _HTML_HEAD_RE = re.compile(rb"^\s*(<!doctype\s+html|<html[\s>])", re.IGNORECASE)
 
 def sniff_format(path: Path) -> str:
     """Sniffs actual content type from the file's bytes rather than trusting the
-    extension -- two corpus files (progressive-discipline-policy, handbook-sample.doc)
-    are deliberately mislabeled to test exactly this. Previously used python-magic, but
-    that needs the system libmagic1 library, which isn't available (and isn't reliably
-    installable) in Azure App Service's Python code-deployment runtime -- replaced with
-    a small dependency-free check covering exactly the formats this corpus actually has."""
+    extension, in case a future corpus file is mislabeled the way a couple of earlier
+    ones were. Previously used python-magic, but that needs the system libmagic1
+    library, which isn't available (and isn't reliably installable) in Azure App
+    Service's Python code-deployment runtime -- replaced with a small dependency-free
+    check covering exactly the formats this corpus actually has."""
     ext = path.suffix.lower().lstrip(".")
     with path.open("rb") as f:
         head = f.read(4096)

@@ -18,7 +18,7 @@ import ThemeToggle from './ThemeToggle.jsx'
 
 const EXAMPLE_QUESTIONS = [
   'How many days per week can employees work remotely?',
-  'What is the progressive discipline policy?',
+  'How much PTO do I earn per year?',
   'What benefits and perks are offered?',
 ]
 
