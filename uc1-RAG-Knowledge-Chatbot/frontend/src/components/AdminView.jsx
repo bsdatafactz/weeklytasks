@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw, FileText, CheckCircle2, Clock } from 'lucide-react'
-import { fetchDocuments, reindexDocuments } from '../lib/api.js'
+import { fetchDocuments, fetchIndexingRuns, reindexDocuments } from '../lib/api.js'
 import Sidebar from './Sidebar.jsx'
 import AnalyticsPanel from './AnalyticsPanel.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
@@ -18,16 +18,18 @@ export default function AdminView() {
   const [loading, setLoading] = useState(true)
   const [reindexing, setReindexing] = useState(false)
   const [error, setError] = useState(null)
+  const [waking, setWaking] = useState(false)
 
   async function loadDocuments() {
     setLoading(true)
     setError(null)
     try {
-      const docs = await fetchDocuments()
+      const docs = await fetchDocuments({ onRetry: () => setWaking(true) })
       setDocuments(docs)
     } catch {
       setError('Could not reach the backend to list indexed documents.')
     } finally {
+      setWaking(false)
       setLoading(false)
     }
   }
@@ -40,12 +42,30 @@ export default function AdminView() {
     setReindexing(true)
     setError(null)
     try {
-      await reindexDocuments()
+      const run = await reindexDocuments()
+      await pollUntilRunFinishes(run.id)
       await loadDocuments()
     } catch {
       setError('Re-index failed. Check the backend logs.')
     } finally {
       setReindexing(false)
+    }
+  }
+
+  // Reindexing now runs in the background (see backend/app/routers/documents.py) --
+  // the POST returns as soon as the run row exists, well before the corpus has actually
+  // finished processing. Poll the run itself rather than the document list, since a
+  // still-running reindex leaves the document list showing the *previous* run's counts,
+  // which would otherwise look like reindexing already finished.
+  async function pollUntilRunFinishes(runId) {
+    while (true) {
+      const runs = await fetchIndexingRuns()
+      const run = runs.find((r) => r.id === runId)
+      if (!run || run.status !== 'running') {
+        if (run?.status === 'failed') throw new Error('Indexing run failed')
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000))
     }
   }
 
@@ -59,6 +79,12 @@ export default function AdminView() {
         <header className="flex shrink-0 items-center justify-end border-b border-neutral-200 px-3 py-2 dark:border-neutral-800">
           <ThemeToggle />
         </header>
+
+        {waking && (
+          <div className="border-b border-df-orange/30 bg-df-orange/10 px-4 py-2 text-center text-xs text-df-orange">
+            Waking up the server, this can take up to a minute on the free tier…
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-6 py-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-8">

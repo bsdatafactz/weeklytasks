@@ -1,6 +1,29 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
 const API_KEY = import.meta.env.VITE_APP_API_KEY ?? 'dev-local-key'
 
+/** GET requests can land during an Azure free-tier cold start, where the backend takes
+ * up to a minute to wake up and every request fails until it does. Retrying with backoff
+ * instead of failing on the first attempt means a slow-to-wake backend just looks like a
+ * brief wait, not disappeared data -- onRetry lets the caller show that as a "waking up"
+ * message rather than an empty/error state on the first failure. */
+async function getWithRetry(path, { onRetry, attempts = 4, baseDelayMs = 1500 } = {}) {
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { headers: { 'x-api-key': API_KEY } })
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+      return await res.json()
+    } catch (err) {
+      lastErr = err
+      if (i < attempts - 1) {
+        onRetry?.(i + 1, attempts)
+        await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** i))
+      }
+    }
+  }
+  throw lastErr
+}
+
 /** Shared by streamChat and regenerateAnswer -- both POST a body and consume an
  * identically-shaped server-sent-events stream, differing only in endpoint/body. */
 async function streamSSE(path, body, { onMeta, onDelta, onDone, onError }) {
@@ -75,20 +98,12 @@ export async function fetchModels() {
   return res.json()
 }
 
-export async function fetchAnalytics() {
-  const res = await fetch(`${API_BASE}/api/v1/analytics`, {
-    headers: { 'x-api-key': API_KEY },
-  })
-  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
-  return res.json()
+export async function fetchAnalytics({ onRetry } = {}) {
+  return getWithRetry('/api/v1/analytics', { onRetry })
 }
 
-export async function fetchDocuments() {
-  const res = await fetch(`${API_BASE}/api/v1/documents`, {
-    headers: { 'x-api-key': API_KEY },
-  })
-  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
-  return res.json()
+export async function fetchDocuments({ onRetry } = {}) {
+  return getWithRetry('/api/v1/documents', { onRetry })
 }
 
 export async function reindexDocuments() {
@@ -100,20 +115,16 @@ export async function reindexDocuments() {
   return res.json()
 }
 
-export async function fetchConversations() {
-  const res = await fetch(`${API_BASE}/api/v1/conversations`, {
-    headers: { 'x-api-key': API_KEY },
-  })
-  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
-  return res.json()
+export async function fetchIndexingRuns({ onRetry } = {}) {
+  return getWithRetry('/api/v1/documents/runs', { onRetry })
 }
 
-export async function fetchConversationDetail(conversationId) {
-  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}`, {
-    headers: { 'x-api-key': API_KEY },
-  })
-  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
-  return res.json()
+export async function fetchConversations({ onRetry } = {}) {
+  return getWithRetry('/api/v1/conversations', { onRetry })
+}
+
+export async function fetchConversationDetail(conversationId, { onRetry } = {}) {
+  return getWithRetry(`/api/v1/conversations/${conversationId}`, { onRetry })
 }
 
 export async function deleteConversation(conversationId) {

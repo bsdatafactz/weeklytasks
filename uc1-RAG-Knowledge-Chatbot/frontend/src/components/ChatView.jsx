@@ -47,15 +47,18 @@ export default function ChatView() {
   const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || '')
   const [sourcesPanel, setSourcesPanel] = useState(null)
+  const [waking, setWaking] = useState(false)
   const conversationIdRef = useRef(null)
   const listRef = useRef(null)
 
   async function loadConversations() {
     try {
-      const list = await fetchConversations()
+      const list = await fetchConversations({ onRetry: () => setWaking(true) })
       setConversations(list)
     } catch {
       // sidebar list is non-critical -- leave it empty rather than blocking the chat
+    } finally {
+      setWaking(false)
     }
   }
 
@@ -91,13 +94,15 @@ export default function ChatView() {
   async function handleSelectConversation(id) {
     if (id === activeConversationId) return
     try {
-      const detail = await fetchConversationDetail(id)
+      const detail = await fetchConversationDetail(id, { onRetry: () => setWaking(true) })
       conversationIdRef.current = id
       setActiveConversationId(id)
       setMessages(detail.messages.map(mapStoredMessage))
       setSourcesPanel(null)
     } catch {
       // leave current view as-is if the fetch fails
+    } finally {
+      setWaking(false)
     }
   }
 
@@ -248,6 +253,12 @@ export default function ChatView() {
           <ModelSelector models={models} selected={selectedModel} onSelect={handleSelectModel} />
           <ThemeToggle />
         </header>
+
+        {waking && (
+          <div className="border-b border-df-orange/30 bg-df-orange/10 px-4 py-2 text-center text-xs text-df-orange">
+            Waking up the server, this can take up to a minute on the free tier…
+          </div>
+        )}
 
         {!hasMessages ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">

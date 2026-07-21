@@ -46,11 +46,13 @@ function ModelUsageRow({ row, maxTokens }) {
 export default function AnalyticsPanel() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [waking, setWaking] = useState(false)
 
   useEffect(() => {
-    fetchAnalytics()
+    fetchAnalytics({ onRetry: () => setWaking(true) })
       .then(setData)
       .catch(() => setError('Could not load analytics.'))
+      .finally(() => setWaking(false))
   }, [])
 
   if (error) {
@@ -62,7 +64,11 @@ export default function AnalyticsPanel() {
   }
 
   if (!data) {
-    return <p className="text-sm text-neutral-500">Loading analytics…</p>
+    return (
+      <p className="text-sm text-neutral-500">
+        {waking ? 'Waking up the server, this can take up to a minute on the free tier…' : 'Loading analytics…'}
+      </p>
+    )
   }
 
   const { totals, usage_by_model: usageByModel } = data
