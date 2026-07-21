@@ -21,14 +21,6 @@ REFUSAL_MESSAGE = (
     "this reliably. Try rephrasing, or ask about a topic covered in the indexed documents."
 )
 
-# Azure App Service's front-end proxy was found (by testing, not assumption) to corrupt a
-# second streaming (SSE) response reused over the same keep-alive connection -- every
-# fresh-connection request works, every reused one truncates mid-stream, reproducible with
-# curl's own --next flag regardless of HTTP/1.1 vs HTTP/2. Forcing the connection closed
-# after each streaming response makes every request open a fresh connection, sidestepping
-# the proxy bug at the cost of a new TLS handshake per request.
-_STREAMING_HEADERS = {"Connection": "close"}
-
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
@@ -175,7 +167,6 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> Stre
             model=model,
         ),
         media_type="text/event-stream",
-        headers=_STREAMING_HEADERS,
     )
 
 
@@ -219,5 +210,4 @@ async def regenerate(request: RegenerateRequest, db: AsyncSession = Depends(get_
             message_id_to_update=target.id,
         ),
         media_type="text/event-stream",
-        headers=_STREAMING_HEADERS,
     )
