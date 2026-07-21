@@ -10,7 +10,7 @@ applyTheme(getStoredTheme())
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/weeklytasks">
       <App />
     </BrowserRouter>
   </StrictMode>,
