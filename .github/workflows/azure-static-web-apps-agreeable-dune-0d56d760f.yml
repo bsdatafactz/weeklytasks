@@ -56,7 +56,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_AGREEABLE_DUNE_0D56D760F }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "./uc1-RAG-Knowledge-Chatbot/frontend"
-          output_location: "dist"
+          app_location: "./uc1-RAG-Knowledge-Chatbot/frontend/dist"
+          output_location: ""
           skip_app_build: true
           github_id_token: ${{ steps.idtoken.outputs.result }}
