@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CON-IT-002 Security Incident Response Policy | Contoso Corp</title>
+<style>
+  :root { --blue: #1a3a5c; --mid: #2c5f8a; --light: #ebf2fa; --red: #c0392b; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: #222; background: #fff; line-height: 1.7; }
+  header { background: var(--blue); color: #fff; padding: 32px 48px; }
+  header .company { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.8; }
+  header h1 { font-size: 26px; font-weight: 700; margin: 6px 0 4px; }
+  header .sub { font-size: 14px; opacity: 0.85; }
+  .meta-bar { background: var(--light); border-bottom: 3px solid var(--mid); display: flex; flex-wrap: wrap; }
+  .meta-cell { flex: 1 1 180px; padding: 10px 24px; border-right: 1px solid #c8d8e8; }
+  .meta-cell:last-child { border-right: none; }
+  .meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--mid); font-weight: 700; }
+  .meta-value { font-size: 14px; color: #222; font-weight: 600; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 48px 60px; }
+  h2 { color: var(--blue); font-size: 19px; margin: 32px 0 10px; padding-bottom: 5px; border-bottom: 2px solid var(--light); }
+  h3 { color: var(--mid); font-size: 16px; margin: 20px 0 6px; }
+  p { margin: 10px 0; color: #333; }
+  ul, ol { margin: 8px 0 12px 24px; }
+  li { margin: 5px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  thead tr { background: var(--blue); color: #fff; }
+  thead th { padding: 10px 14px; text-align: left; }
+  tbody tr:nth-child(even) { background: var(--light); }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid #dde8f0; vertical-align: top; }
+  .alert { background: #fdf0ef; border-left: 4px solid var(--red); padding: 14px 18px; margin: 18px 0; border-radius: 0 6px 6px 0; }
+  .alert strong { color: var(--red); }
+  .severity-1 { background: #fdf0ef; }
+  .severity-2 { background: #fff5e6; }
+  .severity-3 { background: #f0f8ff; }
+  footer { background: var(--blue); color: rgba(255,255,255,0.75); text-align: center; font-size: 12px; padding: 16px; margin-top: 60px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="company">Contoso Corp — IT &amp; Information Security Division</div>
+  <h1>Security Incident Response Policy</h1>
+  <div class="sub">Policy ID: CON-IT-002 &nbsp;|&nbsp; Effective: March 1, 2024</div>
+</header>
+<div class="meta-bar">
+  <div class="meta-cell"><div class="meta-label">Policy ID</div><div class="meta-value">CON-IT-002</div></div>
+  <div class="meta-cell"><div class="meta-label">Effective Date</div><div class="meta-value">March 1, 2024</div></div>
+  <div class="meta-cell"><div class="meta-label">Last Reviewed</div><div class="meta-value">February 2024</div></div>
+  <div class="meta-cell"><div class="meta-label">Policy Owner</div><div class="meta-value">Chief Information Security Officer</div></div>
+</div>
+<main>
+  <div class="alert"><strong>CRITICAL:</strong> If you suspect an active security breach or ransomware attack, immediately call the Security Incident Hotline: <strong>1-800-555-0911</strong> (24/7). Do not attempt to remediate on your own.</div>
+
+  <h2>1. Purpose &amp; Scope</h2>
+  <p>This policy establishes Contoso Corp's framework for detecting, responding to, and recovering from information security incidents. It applies to all employees, contractors, and third parties who access Contoso Corp systems, and to all systems, applications, and data owned or managed by Contoso Corp regardless of hosting location.</p>
+
+  <h2>2. Incident Severity Classification</h2>
+  <table>
+    <thead><tr><th>Severity</th><th>Label</th><th>Definition</th><th>Response SLA</th></tr></thead>
+    <tbody>
+      <tr class="severity-1"><td><strong>P1</strong></td><td>Critical</td><td>Active breach with confirmed data exfiltration, ransomware deployment, full system compromise, or material business disruption</td><td>Immediate — 24/7 response</td></tr>
+      <tr class="severity-2"><td><strong>P2</strong></td><td>High</td><td>Suspected breach, unauthorized access to sensitive systems, malware confirmed but contained, significant service outage</td><td>Within 2 hours</td></tr>
+      <tr class="severity-3"><td><strong>P3</strong></td><td>Medium</td><td>Policy violation with security impact, phishing attempt with credential submission, unauthorized software installation on sensitive system</td><td>Within 8 business hours</td></tr>
+      <tr><td><strong>P4</strong></td><td>Low</td><td>Unsuccessful phishing, minor policy violations, isolated anomalies without confirmed impact</td><td>Within 2 business days</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Incident Response Phases</h2>
+  <h3>Phase 1: Identification &amp; Reporting</h3>
+  <p>Any employee who suspects a security incident must report it immediately via:</p>
+  <ul>
+    <li><strong>Security Incident Hotline:</strong> 1-800-555-0911 (P1/P2 — 24/7)</li>
+    <li><strong>IT Help Desk:</strong> ext. 4357 or helpdesk@contosocorp.com (P3/P4)</li>
+    <li><strong>Email:</strong> security@contosocorp.com (non-urgent reports)</li>
+    <li><strong>Outlook Report Phishing button</strong> (for suspicious emails)</li>
+  </ul>
+  <p>When reporting, provide: your name and contact info, systems or data affected, how you discovered the issue, and any actions already taken (including screenshots if safe to capture).</p>
+
+  <h3>Phase 2: Containment</h3>
+  <p>The Security Operations Center (SOC) will direct containment actions. Employees must follow SOC instructions immediately and completely. Common containment actions include:</p>
+  <ul>
+    <li>Isolating affected systems from the network (do not power off unless instructed).</li>
+    <li>Resetting compromised credentials.</li>
+    <li>Revoking access tokens or API keys.</li>
+    <li>Blocking malicious IP addresses or domains at the perimeter.</li>
+  </ul>
+
+  <h3>Phase 3: Eradication &amp; Recovery</h3>
+  <p>The SOC and IT Operations teams will remove the threat, restore from clean backups, patch vulnerabilities, and validate system integrity before returning systems to production. No affected system may return to production without CISO sign-off for P1/P2 incidents.</p>
+
+  <h3>Phase 4: Post-Incident Review</h3>
+  <p>Within 5 business days of incident resolution, the SOC will produce an Incident Report covering: timeline, root cause, impact assessment, containment and remediation actions, and recommended preventive measures. P1/P2 reports are shared with the CEO, CFO, and Board Audit Committee. All incidents are logged in the Security Incident Registry.</p>
+
+  <h2>4. Notification &amp; Regulatory Reporting</h2>
+  <p>Regulatory and contractual breach notifications are managed by Legal and Compliance in coordination with the CISO. Timelines vary by jurisdiction:</p>
+  <table>
+    <thead><tr><th>Regulation / Authority</th><th>Notification Deadline</th><th>Trigger</th></tr></thead>
+    <tbody>
+      <tr><td>GDPR (EU Supervisory Authority)</td><td>72 hours</td><td>Breach likely to risk rights/freedoms of EU residents</td></tr>
+      <tr><td>CCPA / California AG</td><td>Expedient; no fixed deadline</td><td>Unencrypted personal data of CA residents exposed</td></tr>
+      <tr><td>SEC (public company material events)</td><td>4 business days</td><td>Material cybersecurity incident</td></tr>
+      <tr><td>Individual notification (most US states)</td><td>30–60 days (varies)</td><td>Personal data of state residents exposed</td></tr>
+      <tr><td>Client contractual notification</td><td>Per contract (typically 24–72 hrs)</td><td>Client data involved</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Evidence Preservation</h2>
+  <p>Employees must not delete, modify, or overwrite any data or logs related to a suspected incident. All evidence must be preserved in its original state. The SOC may implement a legal hold on affected systems. Failure to preserve evidence may constitute obstruction and result in disciplinary action.</p>
+
+  <h2>6. Communication During an Incident</h2>
+  <p>All external communications about security incidents (to media, regulators, clients, or partners) must be approved by the CISO, Legal, and Communications team. Employees must not discuss incidents on social media, in public forums, or with unauthorized parties. Internal communications should use the designated incident channel in Microsoft Teams, not standard email, during an active incident.</p>
+</main>
+<footer>Contoso Corp Confidential &nbsp;|&nbsp; CON-IT-002 &nbsp;|&nbsp; Security Hotline: 1-800-555-0911 &nbsp;|&nbsp; security@contosocorp.com</footer>
+</body>
+</html>

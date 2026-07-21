@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from docx import Document as DocxDocument
 
 from app.services.ingestion_service import (
@@ -13,24 +11,35 @@ from app.services.ingestion_service import (
     sniff_format,
 )
 
-RESOURCES_DIR = Path(__file__).resolve().parents[1] / "resources"
-
 
 class TestSniffFormat:
-    def test_misleading_html_extensions_are_sniffed_as_html(self):
-        # These two corpus files have non-HTML extensions but are actually HTML content --
-        # the whole point of content-sniffing instead of trusting the extension.
-        assert sniff_format(RESOURCES_DIR / "progressive-discipline-policy") == "html"
-        assert sniff_format(RESOURCES_DIR / "handbook-sample.doc") == "html"
+    # Synthetic fixtures rather than real corpus filenames -- a prior version of these
+    # tests pointed at specific corpus files, and broke outright the moment the corpus
+    # was replaced. Sniffing is a pure function of file bytes, so it doesn't need real
+    # corpus content to exercise.
+    def test_misleading_extension_is_sniffed_as_html(self, tmp_path):
+        # Content-sniffing rather than trusting the extension is the whole point -- a
+        # real corpus file was once HTML content saved under a non-.html extension.
+        path = tmp_path / "policy.somethingelse"
+        path.write_bytes(b"<!doctype html><html><body><p>hi</p></body></html>")
+        assert sniff_format(path) == "html"
 
-    def test_real_pdf_and_docx_still_sniff_correctly(self):
-        assert sniff_format(RESOURCES_DIR / "attendance.pdf") == "pdf"
-        assert sniff_format(RESOURCES_DIR / "remote-work.docx") == "docx"
+    def test_real_pdf_sniffs_correctly(self, tmp_path):
+        path = tmp_path / "sample.pdf"
+        path.write_bytes(b"%PDF-1.4\n%fake pdf bytes for signature sniffing only")
+        assert sniff_format(path) == "pdf"
 
-    def test_markdown_extension_disambiguated_from_plain_text(self):
-        # `magic` reports .md as generic text/plain; the extension is the only signal
-        # that distinguishes markdown from plain text once content-sniffing says text/plain.
-        assert sniff_format(RESOURCES_DIR / "benefits.md") == "markdown"
+    def test_real_docx_sniffs_correctly(self, tmp_path):
+        path = tmp_path / "sample.docx"
+        DocxDocument().save(str(path))
+        assert sniff_format(path) == "docx"
+
+    def test_markdown_extension_disambiguated_from_plain_text(self, tmp_path):
+        # No binary signature distinguishes markdown from plain text -- the extension is
+        # the only signal once content-sniffing says "this is just text".
+        path = tmp_path / "notes.md"
+        path.write_text("# Heading\nSome body text.")
+        assert sniff_format(path) == "markdown"
 
 
 class TestSplitSections:

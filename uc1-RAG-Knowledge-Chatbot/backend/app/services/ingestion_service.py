@@ -100,7 +100,7 @@ def _load_docx(path: Path) -> str:
         text = para.text.strip()
         if not text:
             continue
-        style = (para.style.name or "").lower()
+        style = ((para.style.name if para.style else None) or "").lower()
         match = re.match(r"heading (\d)", style)
         if match:
             level = min(int(match.group(1)), 6)

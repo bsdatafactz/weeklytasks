@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CON-FIN-002 Procurement & Vendor Management Policy | Contoso Corp</title>
+<style>
+  :root { --blue: #1a3a5c; --mid: #2c5f8a; --light: #ebf2fa; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: #222; background: #fff; line-height: 1.7; }
+  header { background: var(--blue); color: #fff; padding: 32px 48px; }
+  header .company { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.8; }
+  header h1 { font-size: 26px; font-weight: 700; margin: 6px 0 4px; }
+  header .sub { font-size: 14px; opacity: 0.85; }
+  .meta-bar { background: var(--light); border-bottom: 3px solid var(--mid); display: flex; flex-wrap: wrap; }
+  .meta-cell { flex: 1 1 180px; padding: 10px 24px; border-right: 1px solid #c8d8e8; }
+  .meta-cell:last-child { border-right: none; }
+  .meta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--mid); font-weight: 700; }
+  .meta-value { font-size: 14px; color: #222; font-weight: 600; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 48px 60px; }
+  h2 { color: var(--blue); font-size: 19px; margin: 32px 0 10px; padding-bottom: 5px; border-bottom: 2px solid var(--light); }
+  h3 { color: var(--mid); font-size: 16px; margin: 20px 0 6px; }
+  p { margin: 10px 0; color: #333; }
+  ul, ol { margin: 8px 0 12px 24px; }
+  li { margin: 5px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  thead tr { background: var(--blue); color: #fff; }
+  thead th { padding: 10px 14px; text-align: left; }
+  tbody tr:nth-child(even) { background: var(--light); }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid #dde8f0; vertical-align: top; }
+  .note { background: #fff8e6; border-left: 4px solid #e8a800; padding: 14px 18px; margin: 18px 0; border-radius: 0 6px 6px 0; }
+  footer { background: var(--blue); color: rgba(255,255,255,0.75); text-align: center; font-size: 12px; padding: 16px; margin-top: 60px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="company">Contoso Corp — Finance Division</div>
+  <h1>Procurement &amp; Vendor Management Policy</h1>
+  <div class="sub">Policy ID: CON-FIN-002 &nbsp;|&nbsp; Effective: January 1, 2024</div>
+</header>
+<div class="meta-bar">
+  <div class="meta-cell"><div class="meta-label">Policy ID</div><div class="meta-value">CON-FIN-002</div></div>
+  <div class="meta-cell"><div class="meta-label">Effective Date</div><div class="meta-value">January 1, 2024</div></div>
+  <div class="meta-cell"><div class="meta-label">Last Reviewed</div><div class="meta-value">November 2023</div></div>
+  <div class="meta-cell"><div class="meta-label">Policy Owner</div><div class="meta-value">VP, Supply Chain &amp; Procurement</div></div>
+</div>
+<main>
+  <h2>1. Purpose</h2>
+  <p>This policy establishes the standards and procedures for purchasing goods and services at Contoso Corp. It ensures prudent stewardship of company funds, consistent vendor evaluation, compliance with anti-corruption laws, and appropriate protection of Contoso Corp's data and intellectual property in vendor relationships.</p>
+
+  <h2>2. Procurement Authority Thresholds</h2>
+  <table>
+    <thead><tr><th>Purchase Amount (USD)</th><th>Minimum Quotes Required</th><th>Approval Authority</th><th>Contract Required?</th></tr></thead>
+    <tbody>
+      <tr><td>Under $2,500</td><td>None</td><td>Manager</td><td>No (PO sufficient)</td></tr>
+      <tr><td>$2,500 – $25,000</td><td>2 written quotes</td><td>Director</td><td>Standard SOW or PO</td></tr>
+      <tr><td>$25,001 – $100,000</td><td>3 written quotes</td><td>VP</td><td>Yes — Legal review</td></tr>
+      <tr><td>$100,001 – $500,000</td><td>Formal RFP required</td><td>SVP + Finance</td><td>Yes — Legal negotiation</td></tr>
+      <tr><td>Over $500,000</td><td>Formal RFP required</td><td>CFO + CEO</td><td>Yes — Board notification</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><strong>Note:</strong> Splitting a purchase into smaller amounts to circumvent approval thresholds is strictly prohibited and is a violation of this policy subject to disciplinary action.</div>
+
+  <h2>3. Approved Vendor List</h2>
+  <p>Contoso Corp maintains an Approved Vendor List (AVL) for frequently used categories. All purchases exceeding $5,000 must use an AVL vendor or go through new vendor onboarding. The AVL is maintained by the Procurement team and published on the Finance intranet. New vendors must complete:</p>
+  <ul>
+    <li>Vendor Registration Form (Form FIN-V01)</li>
+    <li>W-9 (domestic) or W-8 (international)</li>
+    <li>Third-Party Risk Assessment (security questionnaire for technology vendors)</li>
+    <li>Anti-corruption certification</li>
+    <li>Insurance certificate (minimum requirements per vendor category)</li>
+  </ul>
+
+  <h2>4. Preferred Vendor Categories &amp; Contacts</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Preferred Vendor(s)</th><th>Procurement Contact</th></tr></thead>
+    <tbody>
+      <tr><td>Cloud Infrastructure</td><td>Microsoft Azure, AWS</td><td>it-procurement@contosocorp.com</td></tr>
+      <tr><td>SaaS Software</td><td>Per approved software catalog</td><td>it-procurement@contosocorp.com</td></tr>
+      <tr><td>Staffing &amp; Contingent Labor</td><td>Randstad, Insight Global</td><td>hr@contosocorp.com</td></tr>
+      <tr><td>Legal Services</td><td>Panel firms (contact Legal)</td><td>legal@contosocorp.com</td></tr>
+      <tr><td>Facilities &amp; Office Supplies</td><td>Staples Business Advantage</td><td>facilities@contosocorp.com</td></tr>
+      <tr><td>Travel (see CON-FIN-001)</td><td>World Travel Inc.</td><td>travel@contosocorp.com</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Contract Management</h2>
+  <p>All contracts must be reviewed by the Legal Department before signature. No employee may bind Contoso Corp contractually except as authorized by the Delegation of Authority Policy (CON-FIN-003). Contracts must be executed through the CLM system (Ironclad) and stored in the Contract Repository. Key requirements:</p>
+  <ul>
+    <li>All contracts must include: governing law clause (Delaware, unless otherwise agreed), limitation of liability, IP ownership, confidentiality, and termination rights.</li>
+    <li>Software and technology contracts must include data processing addenda addressing security standards, breach notification, and data return/deletion.</li>
+    <li>Automatic renewal clauses must be flagged; Procurement must be notified 90 days before automatic renewal of contracts over $25,000.</li>
+  </ul>
+
+  <h2>6. Vendor Performance Management</h2>
+  <p>Vendors with annual spend over $100,000 are subject to formal quarterly performance reviews against defined KPIs. Procurement maintains vendor scorecards in Coupa. Vendors with consecutive poor performance ratings may be placed on a performance improvement plan or removed from the AVL. All vendor issues must be documented in Coupa, not handled informally.</p>
+
+  <h2>7. Conflicts of Interest in Procurement</h2>
+  <p>Employees involved in procurement decisions must disclose any personal or financial relationship with potential vendors to their manager and the Ethics team. Employees may not participate in vendor selection if they have a financial interest in the vendor or a close personal relationship with vendor personnel. Undisclosed conflicts are a violation of the Code of Conduct (CON-HR-001) and may result in termination.</p>
+</main>
+<footer>Contoso Corp Confidential &nbsp;|&nbsp; CON-FIN-002 &nbsp;|&nbsp; procurement@contosocorp.com</footer>
+</body>
+</html>
