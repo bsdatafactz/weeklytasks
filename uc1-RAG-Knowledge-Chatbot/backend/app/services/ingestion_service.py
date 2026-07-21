@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import magic
 import tiktoken
 from azure.search.documents.indexes.models import (
     HnswAlgorithmConfiguration,
@@ -43,16 +42,6 @@ CHUNK_OVERLAP_RATIO = 0.12
 
 _encoding = tiktoken.get_encoding("cl100k_base")
 
-_MIME_TO_FORMAT = {
-    "application/pdf": "pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "text/html": "html",
-    "text/xml": "html",
-    "text/plain": "text",
-    "text/markdown": "markdown",
-}
-
-
 @dataclass
 class LoadedDocument:
     format: str
@@ -65,15 +54,32 @@ class Chunk:
     content: str
 
 
+_HTML_HEAD_RE = re.compile(rb"^\s*(<!doctype\s+html|<html[\s>])", re.IGNORECASE)
+
+
 def sniff_format(path: Path) -> str:
-    mime = magic.from_file(str(path), mime=True)
-    # magic reports .md files as generic text/plain, indistinguishable from plain .txt;
-    # the extension is the only signal for markdown specifically, so check it first.
+    """Sniffs actual content type from the file's bytes rather than trusting the
+    extension -- two corpus files (progressive-discipline-policy, handbook-sample.doc)
+    are deliberately mislabeled to test exactly this. Previously used python-magic, but
+    that needs the system libmagic1 library, which isn't available (and isn't reliably
+    installable) in Azure App Service's Python code-deployment runtime -- replaced with
+    a small dependency-free check covering exactly the formats this corpus actually has."""
     ext = path.suffix.lower().lstrip(".")
-    if mime == "text/plain" and ext in ("md", "markdown"):
+    with path.open("rb") as f:
+        head = f.read(4096)
+
+    if head.startswith(b"%PDF"):
+        return "pdf"
+    if head.startswith(b"PK\x03\x04"):
+        return "docx"
+    if _HTML_HEAD_RE.match(head):
+        return "html"
+    # No binary signature matched -- it's text of some kind. There's no content-level
+    # way to tell markdown from plain text (both are just prose), so the extension is
+    # the only signal for that specific distinction.
+    if ext in ("md", "markdown"):
         return "markdown"
-    fmt = _MIME_TO_FORMAT.get(mime)
-    return fmt or ext or "unknown"
+    return ext or "unknown"
 
 
 def _load_pdf(path: Path) -> str:
