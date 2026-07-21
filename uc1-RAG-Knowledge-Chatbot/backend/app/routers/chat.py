@@ -128,10 +128,23 @@ async def _stream_answer(
                 total_tokens=usage.get("total_tokens"),
             )
             assistant_message_id = assistant_message.id
-
-        if final_citations:
-            await citation_repo.add_citations(db2, assistant_message_id, final_citations)
         await db2.commit()
+
+        # Saved as its own transaction, after the message itself is safely committed:
+        # a citation can reference a document_id that's since been deleted or never
+        # existed in Postgres (a real incident -- a stale Azure AI Search entry left
+        # over from a corpus/database reset crashed the whole response mid-stream,
+        # after the answer had already been sent to the user, because the failure
+        # happened inside the same transaction as the message save). Isolating it here
+        # means a bad citation can never again take down the message it's attached to.
+        if final_citations:
+            try:
+                await citation_repo.add_citations(db2, assistant_message_id, final_citations)
+                await db2.commit()
+            except Exception:
+                logger.exception("failed_to_save_citations", extra={"message_id": str(assistant_message_id)})
+                await db2.rollback()
+                final_citations = []
 
     yield _sse({"type": "done", "total_tokens": usage.get("total_tokens"), "citations": final_citations})
 
