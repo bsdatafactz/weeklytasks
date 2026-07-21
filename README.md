@@ -3,11 +3,13 @@
 Code for the 5-week AI Engineering Internship Program at DataFactZ. Each folder is a
 self-contained deliverable with its own README covering setup and what it does.
 
+Day 1's environment-verification exercise and the program's briefs/templates live in
+[`datafactz-internship-exercises`](https://github.com/bsdatafactz/datafactz-internship-exercises).
+
 ## Structure
 
 | Folder | Week | What it is |
 | --- | --- | --- |
-| [`day1-hello-world/`](day1-hello-world/) | Day 1 | Environment-verification smoke test: FastAPI backend calling an LLM, React frontend, DataFactZ branding |
 | [`uc1-RAG-Knowledge-Chatbot/`](uc1-RAG-Knowledge-Chatbot/) | Week 1 | RAG Knowledge Chatbot (Azure AI Search + Foundry stack) |
 | `week2-document-extraction/` | Week 2 | Unstructured Document Extraction (open-source stack) |
 | `week3-4-breach-analytics/` | Weeks 3–4 | Breach Analytics at Scale (agentic, justified stack) |
