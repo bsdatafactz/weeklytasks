@@ -8,8 +8,26 @@ from app.models import Document
 
 
 async def list_documents(db: AsyncSession) -> list[Document]:
-    result = await db.execute(select(Document).order_by(Document.filename))
+    result = await db.execute(
+        select(Document).where(Document.status != "removed").order_by(Document.filename)
+    )
     return list(result.scalars().all())
+
+
+async def list_stale_documents(db: AsyncSession, current_filenames: set[str]) -> list[Document]:
+    """Documents whose source file is no longer in the corpus directory -- a reindex only
+    upserts files it finds on disk, so a deleted file's row would otherwise never be
+    revisited again."""
+    result = await db.execute(select(Document).where(Document.status != "removed"))
+    return [d for d in result.scalars().all() if d.filename not in current_filenames]
+
+
+async def mark_removed(db: AsyncSession, document_id: uuid.UUID) -> None:
+    doc = await db.get(Document, document_id)
+    if doc is None:
+        return
+    doc.status = "removed"
+    await db.flush()
 
 
 async def get_by_checksum(db: AsyncSession, checksum: str) -> Document | None:

@@ -311,6 +311,29 @@ async def _ingest_one(
     return len(chunks)
 
 
+async def _prune_removed_documents(search_client: SearchClient) -> int:
+    """Marks documents whose source file no longer exists in RESOURCES_DIR as removed and
+    deletes their chunks from Azure Search. A plain reindex only upserts files it finds on
+    disk -- it never notices a file that was deleted from the corpus, so without this a
+    removed file's document row (and its now-orphaned Search chunks) would linger forever,
+    showing up in the admin document list and remaining retrievable/citable indefinitely."""
+    current_filenames = {path.name for path in RESOURCES_DIR.iterdir() if path.is_file()}
+
+    async with async_session_factory() as db:
+        stale = await document_repo.list_stale_documents(db, current_filenames)
+        for document in stale:
+            results = await search_client.search(
+                search_text="*", filter=f"document_id eq '{document.id}'", select=["id"], top=1000
+            )
+            stale_ids = [{"id": r["id"]} async for r in results]
+            if stale_ids:
+                await search_client.delete_documents(stale_ids)
+            await document_repo.mark_removed(db, document.id)
+        await db.commit()
+
+    return len(stale)
+
+
 async def _process_corpus() -> tuple[int, int]:
     """Parses, chunks, embeds, and indexes every file in RESOURCES_DIR. Returns
     (doc_count, chunk_count). Shared by the synchronous CLI path and the background-task
@@ -328,6 +351,7 @@ async def _process_corpus() -> tuple[int, int]:
     async with get_search_client() as search_client, get_openai_client() as embed_client:
         paths = [path for path in sorted(RESOURCES_DIR.iterdir()) if path.is_file()]
         chunk_counts = await asyncio.gather(*(ingest_one_bounded(path, search_client, embed_client) for path in paths))
+        await _prune_removed_documents(search_client)
 
     return len(paths), sum(chunk_counts)
 
