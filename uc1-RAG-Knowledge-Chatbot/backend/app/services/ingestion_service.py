@@ -271,14 +271,20 @@ async def _ingest_one(
         async with embed_semaphore:
             return await embed_text(text, client=embed_client)
 
-    async with async_session_factory() as doc_db:
-        checksum = _checksum(path)
-        document = await document_repo.upsert_document(
-            doc_db, filename=path.name, format=sniff_format(path), source_path=str(path), checksum=checksum
-        )
+    # PDF/DOCX/HTML parsing and tiktoken tokenization are synchronous, CPU-bound work --
+    # running them directly on the event loop would freeze every other request (chat,
+    # document list, etc.) on the whole process for as long as they take. asyncio.to_thread
+    # hands each off to a worker thread so the event loop stays free to serve other traffic
+    # while this runs.
+    checksum = await asyncio.to_thread(_checksum, path)
+    fmt = await asyncio.to_thread(sniff_format, path)
+    loaded = await asyncio.to_thread(load_document, path)
+    chunks = await asyncio.to_thread(chunk_document, loaded)
 
-        loaded = load_document(path)
-        chunks = chunk_document(loaded)
+    async with async_session_factory() as doc_db:
+        document = await document_repo.upsert_document(
+            doc_db, filename=path.name, format=fmt, source_path=str(path), checksum=checksum
+        )
 
         vectors = await asyncio.gather(*(embed_bounded(chunk.content) for chunk in chunks))
         search_docs = [
@@ -305,9 +311,12 @@ async def _ingest_one(
     return len(chunks)
 
 
-async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
+async def _process_corpus() -> tuple[int, int]:
+    """Parses, chunks, embeds, and indexes every file in RESOURCES_DIR. Returns
+    (doc_count, chunk_count). Shared by the synchronous CLI path and the background-task
+    path -- neither owns a caller-supplied db session, since ingesting each document
+    already opens its own (see _ingest_one)."""
     await ensure_index_exists()
-    run = await indexing_run_repo.start_run(db, triggered_by=triggered_by)
 
     embed_semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
     doc_semaphore = asyncio.Semaphore(DOC_CONCURRENCY)
@@ -320,11 +329,35 @@ async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
         paths = [path for path in sorted(RESOURCES_DIR.iterdir()) if path.is_file()]
         chunk_counts = await asyncio.gather(*(ingest_one_bounded(path, search_client, embed_client) for path in paths))
 
-    total_docs = len(paths)
-    total_chunks = sum(chunk_counts)
+    return len(paths), sum(chunk_counts)
+
+
+async def ingest_all(db: AsyncSession, triggered_by: str = "admin") -> dict:
+    run = await indexing_run_repo.start_run(db, triggered_by=triggered_by)
+    total_docs, total_chunks = await _process_corpus()
 
     await indexing_run_repo.finish_run(
         db, run.id, doc_count=total_docs, chunk_count=total_chunks, status="completed"
     )
     await db.commit()
     return {"doc_count": total_docs, "chunk_count": total_chunks}
+
+
+async def run_ingestion_background(run_id) -> None:
+    """Entry point for the reindex endpoint's BackgroundTasks call: the endpoint has
+    already created and returned the IndexingRun row on its own request-scoped session
+    before scheduling this, so this runs entirely on its own fresh session (the request's
+    session is closed by the time a background task executes) and only has to update that
+    same row when the corpus finishes processing -- or mark it failed, so a crash here
+    doesn't leave the row stuck at "running" forever with no visible error."""
+    try:
+        total_docs, total_chunks = await _process_corpus()
+        status = "completed"
+    except Exception:
+        logger.exception("ingestion_failed", extra={"run_id": str(run_id)})
+        total_docs, total_chunks = 0, 0
+        status = "failed"
+
+    async with async_session_factory() as db:
+        await indexing_run_repo.finish_run(db, run_id, doc_count=total_docs, chunk_count=total_chunks, status=status)
+        await db.commit()

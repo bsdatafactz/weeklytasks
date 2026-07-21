@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -22,8 +22,14 @@ async def list_indexing_runs(db: AsyncSession = Depends(get_db)) -> list[Indexin
     return [IndexingRunOut.model_validate(r) for r in runs]
 
 
-@router.post("/reindex", response_model=IndexingRunOut)
-async def reindex(db: AsyncSession = Depends(get_db)) -> IndexingRunOut:
-    await ingestion_service.ingest_all(db, triggered_by="admin-ui")
-    runs = await indexing_run_repo.list_runs(db, limit=1)
-    return IndexingRunOut.model_validate(runs[0])
+@router.post("/reindex", response_model=IndexingRunOut, status_code=202)
+async def reindex(background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)) -> IndexingRunOut:
+    """Returns as soon as the run row exists, instead of waiting for the ~90s corpus
+    pipeline to finish -- that used to block this request (and, since parsing/chunking ran
+    synchronously on the event loop, every other request on the server) for the full
+    duration. Ingestion now proceeds in the background; poll GET /documents/runs for
+    completion."""
+    run = await indexing_run_repo.start_run(db, triggered_by="admin-ui")
+    await db.commit()
+    background_tasks.add_task(ingestion_service.run_ingestion_background, run.id)
+    return IndexingRunOut.model_validate(run)
