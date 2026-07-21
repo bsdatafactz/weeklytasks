@@ -60,8 +60,8 @@ def should_refuse(top_score: float | None) -> bool:
 # The model doesn't always cite one bracket per source -- it sometimes bundles several
 # as "[fileA, refA; fileB, refB]" in a single bracket despite the system prompt asking
 # for one each. Matching the whole "[filename, chunk_ref]" string as one literal
-# substring misses that case, so each bracket group is checked for both pieces
-# co-occurring rather than requiring an exact bracket-per-citation match.
+# substring misses that case, so each bracket group is checked instead of requiring an
+# exact bracket-per-citation match.
 _BRACKET_GROUP_RE = re.compile(r"\[([^\]]+)\]")
 
 
@@ -84,9 +84,16 @@ def leads_with_disclaimer(answer: str) -> bool:
 
 
 def filter_cited_chunks(answer: str, chunks: list[dict]) -> list[dict]:
+    """Matches on filename only, not filename+chunk_ref -- found live that the model
+    doesn't reliably reproduce chunk_ref verbatim. Real example: the actual chunk_ref
+    was "4. Benefits & Employee Wellness" but the model cited a sub-paragraph number
+    from inside that chunk as "4.1"; another was "Document (part 26/27)" but the model
+    dropped the "Document (" prefix and wrote just "part 26/27". Requiring the exact
+    chunk_ref substring silently dropped every citation on an answer that was genuinely
+    well-grounded. Filename alone is what the model consistently gets right -- the
+    tradeoff is that if the same file contributed multiple retrieved chunks and the
+    model's answer only names the file once, all of that file's chunks are kept rather
+    than just the one actually quoted, which is a much smaller loss of precision than
+    silently showing zero sources on a real, cited answer."""
     bracket_groups = _BRACKET_GROUP_RE.findall(answer)
-    return [
-        c
-        for c in chunks
-        if any(c["filename"] in group and c["chunk_ref"] in group for group in bracket_groups)
-    ]
+    return [c for c in chunks if any(c["filename"] in group for group in bracket_groups)]
