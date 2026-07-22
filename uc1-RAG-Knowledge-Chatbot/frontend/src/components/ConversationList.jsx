@@ -1,18 +1,5 @@
 import { SquarePen, Trash2 } from 'lucide-react'
 
-function formatRelative(isoDate) {
-  const date = new Date(isoDate)
-  const diffMs = Date.now() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-  const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
 export default function ConversationList({ conversations, activeId, onSelect, onNew, onDelete }) {
   return (
     <>
@@ -39,16 +26,13 @@ export default function ConversationList({ conversations, activeId, onSelect, on
                 <button
                   type="button"
                   onClick={() => onSelect(conversation.id)}
-                  className={`flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                  className={`block w-full truncate rounded-lg px-2.5 py-2 text-left text-sm transition ${
                     conversation.id === activeId
                       ? 'bg-neutral-200/80 text-neutral-900 dark:bg-neutral-800/80 dark:text-neutral-100'
                       : 'text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-neutral-200'
                   }`}
                 >
                   <span className="block truncate pr-5">{conversation.preview}</span>
-                  <span className="block text-xs text-neutral-400 dark:text-neutral-600">
-                    {formatRelative(conversation.created_at)}
-                  </span>
                 </button>
                 <button
                   type="button"

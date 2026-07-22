@@ -36,7 +36,6 @@ function mapStoredMessage(message) {
     citations: message.citations ?? [],
     model: message.model ?? null,
     totalTokens: message.total_tokens ?? null,
-    feedback: null,
   }
 }
 
@@ -162,7 +161,6 @@ export default function ChatView() {
       refused: false,
       injectionFlagged: false,
       citations: [],
-      feedback: null,
     }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
@@ -222,10 +220,6 @@ export default function ChatView() {
       onDone,
       onError,
     })
-  }
-
-  function handleFeedback(assistantId, value) {
-    setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, feedback: value } : m)))
   }
 
   async function handleSend(overrideText) {
@@ -303,7 +297,6 @@ export default function ChatView() {
                     onOpenSources={setSourcesPanel}
                     onRegenerate={regenerateMessage}
                     canRegenerate={!sending}
-                    onFeedback={handleFeedback}
                   />
                 ))}
               </div>

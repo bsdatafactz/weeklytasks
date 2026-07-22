@@ -1,17 +1,6 @@
 import { useState } from 'react'
 import Markdown from 'react-markdown'
-import {
-  ShieldAlert,
-  CircleSlash,
-  Sparkles,
-  Cpu,
-  FileText,
-  RotateCcw,
-  Copy,
-  Check,
-  ThumbsUp,
-  ThumbsDown,
-} from 'lucide-react'
+import { ShieldAlert, CircleSlash, Sparkles, Cpu, FileText, RotateCcw, Copy, Check } from 'lucide-react'
 
 const MODEL_LABELS = {
   'gpt-5': 'GPT-5',
@@ -68,19 +57,11 @@ function AssistantAvatar() {
   )
 }
 
-// Tailwind gives every plain utility class the same specificity, so an "active"
-// color class appended after the base color class isn't guaranteed to win -- which
-// class wins depends on stylesheet order, not on className string order. Swapping
-// the color classes outright (never emitting both at once) sidesteps that entirely.
-function ActionIconButton({ active, activeClassName, children, ...props }) {
-  const colorClasses = active
-    ? activeClassName
-    : 'text-neutral-400 hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-neutral-100'
-
+function ActionIconButton({ children, ...props }) {
   return (
     <button
       type="button"
-      className={`inline-flex size-7 items-center justify-center rounded-md transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-800 ${colorClasses}`}
+      className="inline-flex size-7 items-center justify-center rounded-md text-neutral-400 transition hover:bg-neutral-200 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
       {...props}
     >
       {children}
@@ -108,13 +89,7 @@ function CopyButton({ getText }) {
   )
 }
 
-export default function MessageBubble({
-  message,
-  onOpenSources,
-  onRegenerate,
-  canRegenerate,
-  onFeedback,
-}) {
+export default function MessageBubble({ message, onOpenSources, onRegenerate, canRegenerate }) {
   const isUser = message.role === 'user'
 
   if (isUser) {
@@ -169,24 +144,6 @@ export default function MessageBubble({
               <RotateCcw className="size-3.5" strokeWidth={1.75} />
             </ActionIconButton>
 
-            <ActionIconButton
-              active={message.feedback === 'up'}
-              activeClassName="text-df-orange hover:text-df-orange"
-              onClick={() => onFeedback?.(message.id, message.feedback === 'up' ? null : 'up')}
-              aria-label="Good response"
-            >
-              <ThumbsUp className="size-3.5" strokeWidth={1.75} />
-            </ActionIconButton>
-
-            <ActionIconButton
-              active={message.feedback === 'down'}
-              activeClassName="text-df-red hover:text-df-red"
-              onClick={() => onFeedback?.(message.id, message.feedback === 'down' ? null : 'down')}
-              aria-label="Bad response"
-            >
-              <ThumbsDown className="size-3.5" strokeWidth={1.75} />
-            </ActionIconButton>
-
             {message.citations?.length > 0 && (
               <button
                 type="button"
@@ -204,9 +161,6 @@ export default function MessageBubble({
           <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-600">
             <Cpu className="size-3" strokeWidth={1.75} />
             {MODEL_LABELS[message.model] ?? message.model}
-            {message.totalTokens != null && (
-              <span className="tabular-nums">· {message.totalTokens.toLocaleString()} tokens</span>
-            )}
           </div>
         )}
       </div>
