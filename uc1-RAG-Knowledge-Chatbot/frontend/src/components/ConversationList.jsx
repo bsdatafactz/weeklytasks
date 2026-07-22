@@ -1,4 +1,4 @@
-import { SquarePen, Trash2, MessageSquare } from 'lucide-react'
+import { SquarePen, Trash2 } from 'lucide-react'
 
 function formatRelative(isoDate) {
   const date = new Date(isoDate)
@@ -20,9 +20,9 @@ export default function ConversationList({ conversations, activeId, onSelect, on
         <button
           type="button"
           onClick={onNew}
-          className="flex w-full items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-900"
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-800"
         >
-          <SquarePen className="size-4" strokeWidth={1.75} />
+          <SquarePen className="size-4 text-df-orange" strokeWidth={1.75} />
           New chat
         </button>
       </div>
@@ -39,18 +39,15 @@ export default function ConversationList({ conversations, activeId, onSelect, on
                 <button
                   type="button"
                   onClick={() => onSelect(conversation.id)}
-                  className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                  className={`flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left text-sm transition ${
                     conversation.id === activeId
-                      ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100'
-                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-200'
+                      ? 'bg-neutral-200/80 text-neutral-900 dark:bg-neutral-800/80 dark:text-neutral-100'
+                      : 'text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-neutral-200'
                   }`}
                 >
-                  <MessageSquare className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.75} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate pr-5">{conversation.preview}</span>
-                    <span className="block text-xs text-neutral-400 dark:text-neutral-600">
-                      {formatRelative(conversation.created_at)}
-                    </span>
+                  <span className="block truncate pr-5">{conversation.preview}</span>
+                  <span className="block text-xs text-neutral-400 dark:text-neutral-600">
+                    {formatRelative(conversation.created_at)}
                   </span>
                 </button>
                 <button

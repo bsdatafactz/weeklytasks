@@ -1,5 +1,17 @@
+import { useState } from 'react'
 import Markdown from 'react-markdown'
-import { ShieldAlert, CircleSlash, Sparkles, Cpu, FileText, RotateCcw } from 'lucide-react'
+import {
+  ShieldAlert,
+  CircleSlash,
+  Sparkles,
+  Cpu,
+  FileText,
+  RotateCcw,
+  Copy,
+  Check,
+  ThumbsUp,
+  ThumbsDown,
+} from 'lucide-react'
 
 const MODEL_LABELS = {
   'gpt-5': 'GPT-5',
@@ -56,7 +68,47 @@ function AssistantAvatar() {
   )
 }
 
-export default function MessageBubble({ message, onOpenSources, onRegenerate, canRegenerate }) {
+function ActionIconButton({ active, activeClassName, children, ...props }) {
+  return (
+    <button
+      type="button"
+      className={`inline-flex size-7 items-center justify-center rounded-md text-neutral-400 transition hover:bg-neutral-200 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 ${
+        active ? activeClassName : ''
+      }`}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+
+function CopyButton({ getText }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(getText())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard permission denied or unavailable -- silently no-op
+    }
+  }
+
+  return (
+    <ActionIconButton onClick={handleCopy} aria-label="Copy response">
+      {copied ? <Check className="size-3.5 text-green-600 dark:text-green-500" strokeWidth={2} /> : <Copy className="size-3.5" strokeWidth={1.75} />}
+    </ActionIconButton>
+  )
+}
+
+export default function MessageBubble({
+  message,
+  onOpenSources,
+  onRegenerate,
+  canRegenerate,
+  onFeedback,
+}) {
   const isUser = message.role === 'user'
 
   if (isUser) {
@@ -70,7 +122,7 @@ export default function MessageBubble({ message, onOpenSources, onRegenerate, ca
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="group flex gap-3">
       <AssistantAvatar />
       <div className="min-w-0 flex-1 pt-0.5 text-[15px] text-neutral-800 dark:text-neutral-200">
         {message.injectionFlagged && (
@@ -104,27 +156,41 @@ export default function MessageBubble({ message, onOpenSources, onRegenerate, ca
         )}
 
         {!message.streaming && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 has-[:focus-visible]:opacity-100">
+            <CopyButton getText={() => stripCitationMarkers(message.content)} />
+
+            <ActionIconButton onClick={() => onRegenerate?.(message.id)} disabled={!canRegenerate} aria-label="Regenerate response">
+              <RotateCcw className="size-3.5" strokeWidth={1.75} />
+            </ActionIconButton>
+
+            <ActionIconButton
+              active={message.feedback === 'up'}
+              activeClassName="text-df-orange hover:text-df-orange"
+              onClick={() => onFeedback?.(message.id, message.feedback === 'up' ? null : 'up')}
+              aria-label="Good response"
+            >
+              <ThumbsUp className="size-3.5" strokeWidth={1.75} />
+            </ActionIconButton>
+
+            <ActionIconButton
+              active={message.feedback === 'down'}
+              activeClassName="text-df-red hover:text-df-red"
+              onClick={() => onFeedback?.(message.id, message.feedback === 'down' ? null : 'down')}
+              aria-label="Bad response"
+            >
+              <ThumbsDown className="size-3.5" strokeWidth={1.75} />
+            </ActionIconButton>
+
             {message.citations?.length > 0 && (
               <button
                 type="button"
                 onClick={() => onOpenSources?.(message.citations)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
+                className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
               >
                 <FileText className="size-3 text-df-orange" strokeWidth={1.75} />
                 Sources · {message.citations.length}
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => onRegenerate?.(message.id)}
-              disabled={!canRegenerate}
-              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-500 transition hover:border-df-orange/50 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:text-neutral-200"
-            >
-              <RotateCcw className="size-3" strokeWidth={1.75} />
-              Regenerate
-            </button>
           </div>
         )}
 
