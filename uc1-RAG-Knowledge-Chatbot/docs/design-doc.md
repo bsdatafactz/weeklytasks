@@ -4,7 +4,7 @@
 
 Employees need quick, trustworthy answers to policy/benefits/procedure questions without
 digging through a stack of PDFs, DOCX files, and wiki pages. Today those answers live
-scattered across 19 source documents in 4 formats. This project builds an internal knowledge
+scattered across 20 source documents in 4 formats. This project builds an internal knowledge
 assistant that answers questions **grounded only in that corpus** — with citations back to
 the source document and section, a refusal path for out-of-scope questions, and resistance to
 prompt-injection attempts — so employees get a fast, accurate, auditable answer instead of an
@@ -12,61 +12,44 @@ LLM improvising from general knowledge.
 
 ## 2. Corpus
 
-19 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` (kept inside the backend's Docker
-build context so ingestion works in a container without a separate volume mount): 8 PDF,
-4 DOCX, 4 HTML, 3 Markdown — 481 chunks total. Filenames are chosen to describe what's actually
-inside the document, not just carried over from however the source published it — see the
-naming audit below.
+**20 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` — a generated fictional "Contoso
+Corp" policy set** (per the brief's own alternative to collecting real-world documents),
+evenly split 5 PDF / 5 DOCX / 5 HTML / 5 Markdown, 179 chunks total (avg 104 tokens/chunk).
+Every file follows a `CON-<DEPT>-<NNN>_<Topic>` naming convention (`CON-HR-002_PTO_Leave_Policy.pdf`,
+`CON-IT-002_Incident_Response_Policy.html`, etc.) spanning HR, IT, Finance, and Ops — 20
+distinct topics with no overlap.
 
-Includes `progressive-discipline-policy` and `handbook-sample.doc`, both HTML
-content under a **deliberately kept** misleading extension. The ingestion loader sniffs actual
-content type (`python-magic`) rather than trusting the extension, so both are correctly parsed
-as HTML; confirmed by running the loader against the real corpus (all 19 files parse without
-error) and covered directly by `backend/tests/test_ingestion_service.py`.
+**Why fictional over real-world-scraped, decided after real experience with both (2026-07-21):**
+the corpus started as a 19-document patchwork of real, publicly-available HR templates and
+government guides. Two real, costly problems came out of that approach, both caught only by
+actually testing against the live index, not by reading the files:
 
-**Naming/content audit, round 1 (2026-07-20):** every corpus file was opened and read, not just
-trusted by filename, after a real accuracy problem traced back to corpus composition — a
-retirement question was surfacing a citation from a document about federal-employee
-separation codes. That audit found two documents that had nothing to do with employee HR
-policy despite being in the corpus:
+- **Off-topic content dominating the index.** A retirement question surfaced a citation from a
+  federal hiring-examiner procedures manual that had no business in an HR-policy corpus. A full
+  content audit (every file opened and read, not trusted by filename) found two such documents
+  making up **58% of the entire chunk index** — an accuracy problem, not just a naming one.
+- **Wildly uneven document sizes.** The largest single document (`hr-manual.docx`, 132 chunks,
+  32% of the corpus) dominated reindex wall-clock time under the ingestion pipeline's
+  bounded document-concurrency (§6b), and several other real-world PDFs ranged from a few KB to
+  9+ MB with no relationship between file size and actual policy content density.
 
-- `deo_handbook.pdf` — actually the U.S. Office of Personnel Management's *Delegated
-  Examining Operations Handbook*, procedures for federal hiring examiners. 322 chunks.
-- `wfahandbook.pdf` — actually the U.S. Department of Transportation's *Workforce Analysis
-  Handbook*, internal org-design methodology for federal agencies. 273 chunks.
+Both problems are structural to assembling a corpus from documents you don't control the
+authorship of — you inherit whatever length, focus, and quality the original publisher chose.
+A generated fictional set fixes this at the source: every document is exactly as long as its
+topic needs, on-topic by construction, and evenly distributed across formats and departments.
+The trade-off, honestly stated: a generated corpus can't demonstrate handling *real-world*
+authoring inconsistencies (inconsistent heading styles, scanned-image PDFs, mixed languages) the
+way scraped documents can — the original patchwork's parsing/chunking bugs (see §6b) were only
+findable because it was messy in exactly that way.
 
-Together these were **595 of the original 1,023 chunks (58%) — the majority of the entire
-index — despite being completely off-topic.** Both were removed. Three more files were
-misleadingly *named* (though on-topic enough to keep) and renamed to match their real content —
-the DOL's FMLA guide, the DOL's general Employment Law Guide (not specifically about
-progressive discipline despite its original name), and Gusto's guide on *how to write* a
-handbook (not itself a company policy). One legitimately on-topic document (a real sample
-handbook from Public Counsel's Community Development Project for nonprofits/small businesses)
-was added to the corpus.
-
-**Naming audit, round 2 (2026-07-20):** with 9 of 19 files touching "benefits" or "handbook" in
-some way, the descriptive-but-long names from round 1 (e.g.
-`employee-benefits-summary-template.docx`, `shrm-sample-employee-handbook-2023.docx`) were
-still hard to visually distinguish at a glance. Shortened every filename with a consistent
-prefix scheme so related documents group together and stay scannable:
-
-| Prefix | Files | What distinguishes each |
-|---|---|---|
-| `benefits-` | `benefits.md`, `benefits-enrollment.pdf`, `benefits-summary.docx` | perks/insurance narrative vs. the enrollment process vs. a numbers-only summary sheet |
-| `handbook-` | `handbook-nonprofit.pdf`, `handbook-sample.doc`, `handbook-indeed.pdf`, `handbook-howto-gusto.pdf`, `handbook-shrm.docx` | which source published it, or (for the Gusto one) that it teaches *how to write* a handbook rather than being one |
-
-Everything else got a shorter single/double-word name (`attendance.pdf`, `remote-work.docx`,
-`fmla-guide.pdf`, `hr-manual.docx`, `career-growth.md`, etc.). `progressive-discipline-policy`
-and `handbook-sample.doc` keep their exact names deliberately — see above.
-
-Retrieval testing deliberately includes queries against the smaller, more specific documents
-too, so the index isn't validated only against the largest files (see
-`retrieval-quality-note.md`).
-
-`shrm-hr-curriculum.pdf` (SHRM's curriculum guidebook for university HR degree programs, 61
-chunks) was kept in the corpus despite also not being company policy — it's lower-priority
-background material, not actively wrong the way the two removed documents were, and removing it
-was left as the owner's call rather than assumed.
+**Real bug this corpus swap surfaced:** `_load_docx` crashed with `'NoneType' object has no
+attribute 'name'` on any paragraph whose `python-docx` style resolved to `None` — true for all 5
+new `.docx` files (the previous corpus's DOCX files happened not to hit this). Since ingestion
+runs all documents through `asyncio.gather` without `return_exceptions=True`, this would have
+aborted the *entire* reindex, not just the affected files, on the very first ingestion attempt.
+Fixed by guarding the `None` case; covered by `backend/tests/test_ingestion_service.py`, which
+was also rewritten to use synthetic `tmp_path` fixtures instead of hardcoded corpus filenames —
+the previous version of those tests broke outright the moment the corpus changed.
 
 ## 3. Architecture
 
@@ -100,9 +83,8 @@ flowchart TB
 
 ### Backend layering
 
-Routers (`/api/v1`) → services → repositories → external clients, following the pattern
-already established in `day1-hello-world/backend` (Pydantic Settings, `.env`/`.env.example`,
-`HTTPException`-based error handling, no 200-with-error-body responses).
+Routers (`/api/v1`) → services → repositories → external clients (Pydantic Settings,
+`.env`/`.env.example`, `HTTPException`-based error handling, no 200-with-error-body responses).
 
 ```
 routers/        chat.py, documents.py (admin), health.py
@@ -113,12 +95,12 @@ clients/        azure_search_client, azure_foundry_client
 
 ### Frontend
 
-React (Vite) + Tailwind, reusing `day1-hello-world/frontend`'s DataFactZ theme (gradient,
-navy, Inter, Lucide icons). Chat view: streaming responses, citation chips linking to source
-doc + section, a distinct visual state for refusals. Admin view: indexed-document table with
-chunk counts and a re-index button.
+React (Vite) + Tailwind, with the DataFactZ brand theme (gradient, navy, Inter, Lucide icons)
+per Handbook Section 7. Chat view: streaming responses, citation chips linking to source doc +
+section, a distinct visual state for refusals. Admin view: indexed-document table with chunk
+counts and a re-index button.
 
-## 4. Data model (Postgres, local via Docker)
+## 4. Data model (Postgres — Docker locally, Azure Database for PostgreSQL Flexible Server in production)
 
 ```mermaid
 erDiagram
@@ -181,8 +163,10 @@ alternatives.
 | Retrieval | Hybrid (vector + keyword) with semantic ranker | **Pure vector search**: misses exact-term matches like policy names, section numbers, acronyms that show up verbatim in questions. **Pure keyword search**: misses paraphrased/natural-language questions that don't share vocabulary with the source doc. |
 | Embedding model | `text-embedding-3-large` (Azure AI Foundry) | **`text-embedding-3-small`**: cheaper/faster but measurably lower retrieval quality on the nuanced language in HR policy text — compared head-to-head on the retrieval-quality test set (§7). **AI Search integrated vectorization**: adds a second managed-service dependency for embeddings the team can already generate directly via Foundry — no benefit once a Foundry embedding deployment exists. |
 | Generation model | GPT-5 | **GPT-5.5**: no measurable quality edge over GPT-5 for this grounded-QA task, and its Foundry quota is far more constraining — 5M TPM / 5K RPM vs. GPT-5's 15M TPM / 150K RPM. The RPM gap (30x) matters most: request-count limits bind before token limits under many concurrent short chat turns, so GPT-5.5 would hit quota walls first as usage scales toward 5,000 users. **DeepSeek V3.2**: weakest quota of the three (500K TPM / 500 RPM) and requires a separate Azure AI Inference (serverless) endpoint/SDK route instead of the OpenAI-compatible one already used for embeddings — extra operational surface with no offsetting benefit for this task. |
-| Relational database | Postgres, local via Docker | **Azure Database for PostgreSQL Flexible Server**: no provisioning access in the shared Resource Group. **Cosmos DB**: same access constraint, and its document model is a worse fit than Postgres's relational joins for `conversations → messages → citations`. This is a documented deviation from the "Azure-hosted" default — production path is to migrate to Azure Database for PostgreSQL Flexible Server once access is granted (see §6). |
+| Relational database | Postgres — local via Docker for dev, Azure Database for PostgreSQL Flexible Server in production (access was granted after this decision was first made; local Docker is kept for dev since it needs no cloud round-trip) | **Cosmos DB**: its document model is a worse fit than Postgres's relational joins for `conversations → messages → citations`. |
 | Follow-up question retrieval | Condense the question against history via GPT-5 before retrieval (non-streaming call, skipped on turn one) | **Retrieval on the raw current message only** (the original approach): a vague follow-up like "tell me more about that" carries no retrievable meaning by itself — measured on the real corpus, a genuine follow-up scored 1.98 on the semantic reranker (below the 2.0 refusal threshold) and was incorrectly refused, even though the prior turn in the same conversation had already retrieved the relevant chunk at 3.65. Generation never got a chance to use the history that would have resolved it, because retrieval gave up first. **Naive concatenation of full history into the retrieval query**: cheaper (no extra call) but dilutes the embedding with irrelevant earlier turns and grows unbounded with conversation length; an LLM rewrite targets just what's actually being asked. Condensing costs one extra sequential GPT-5 call per turn with history — accepted given the RPM headroom already established in §6. |
+| Corpus sourcing | Generated fictional "Contoso Corp" policy set (§2) | **Collecting real-world public HR documents** (the original approach, kept for two weeks): unpredictable content quality and document size — 58% of one iteration's chunks turned out to be off-topic federal-agency material only caught by live retrieval testing, and the largest single file dominated reindex time at 32% of the whole corpus. Real-world documents are more representative of what a production client corpus looks like, which is the honest trade-off given up here (see §2). |
+| Removed-document handling | Soft-delete: mark `documents.status = "removed"` and delete the matching Azure Search chunks by `document_id` filter, on every reindex | **Hard `DELETE` of the Postgres row**: `citations.document_id` has a plain (non-cascading) foreign key to `documents.id` — deleting a document with existing citations against it would raise a foreign-key violation the first time someone reindexes after removing a corpus file with real chat history against it. Adding `ON DELETE CASCADE` would fix that but silently deletes citations out from under old conversations. **Leaving stale rows alone** (the original behavior): simplest, but a removed file's document row and orphaned Search chunks lingered forever, visibly wrong in the admin document list and still retrievable/citable indefinitely — this is the bug that motivated fixing it at all (see §6b). |
 
 ## 6. Scalability (100 → 5,000 users)
 
@@ -199,9 +183,9 @@ alternatives.
   due to access constraints, but the code has no in-process state that would block it).
 - **Retrieval**: Azure AI Search scales via replicas (query throughput) and partitions (index
   size) independently of the backend.
-- **Relational data**: migrate from local Postgres to Azure Database for PostgreSQL Flexible
-  Server with connection pooling (pgbouncer) once access is granted; add read replicas if
-  conversation history read load grows.
+- **Relational data**: production already runs on Azure Database for PostgreSQL Flexible Server;
+  next steps at scale are connection pooling (pgbouncer) and read replicas if conversation
+  history read load grows.
 - **Caching**: a Redis cache in front of `retrieval_service` for repeated/common questions
   reduces both AI Search query volume and generation calls at scale.
 - **Rate limiting**: per-user request limits protect the generation budget as user count grows.
@@ -226,6 +210,40 @@ Fixed by giving local dev its own index name (`uc1-rag-index-local` vs. producti
 `uc1-rag-index`) on the same Azure AI Search *service* — sharing the service is fine and
 saves provisioning a second one, but the index itself must not be shared between
 environments with separate Postgres databases. See `backend/.env.example`.
+
+## 6b. Reindex reliability incidents (2026-07-21/22)
+
+Three real, load-bearing incidents, all found by actually triggering reindexes against the
+live deployment rather than trusting the code:
+
+- **Reindex blocked the entire server, not just the admin page.** `POST /documents/reindex`
+  used to `await` the full ingestion pipeline (~90s) before responding, and the CPU-bound parse/
+  chunk step (`load_document`, `chunk_document`, file-hash checksumming) ran directly on
+  FastAPI's single event loop with no `await` point — freezing every other request (chat,
+  document list) on the whole process for the duration, not just the triggering admin session.
+  Fixed two ways: the endpoint now creates the run row and returns immediately via a
+  `BackgroundTasks` callback instead of blocking the HTTP response, and the parse/chunk step is
+  offloaded to a worker thread via `asyncio.to_thread` so it no longer monopolizes the event
+  loop while it runs.
+- **A hung embedding/upload call left a reindex "running" forever, with no timeout.** A live
+  production reindex stalled for 15+ minutes with zero forward progress (verified by polling
+  per-document `indexed_at` timestamps, not just the run's own status field, since `doc_count`/
+  `chunk_count` only get written at the very end). Local reproduction ruled out a parsing hang —
+  every remaining file parsed in under 1.1s outside the container — pointing to a stuck network
+  call (Foundry embedding or Search upload) with no timeout. Recovered by restarting the App
+  Service and manually correcting the stuck `indexing_runs` row to `"failed"`, since a hard
+  process kill skips the code's own cleanup path. Not yet fixed at the code level — a per-document
+  `asyncio.wait_for(...)` timeout is the identified next step so a single bad network call can't
+  block an entire reindex again.
+- **Free-tier cold starts looked identical to lost data.** Azure App Service's Free (F1) tier has
+  no "Always On" and unloads the process after idle periods; the next request pays a cold-start
+  penalty during which conversations/documents/analytics all failed, and several of those
+  failures were caught silently by the frontend, showing empty lists indistinguishable from
+  actual data loss. A keep-alive ping was considered and rejected — F1's 60 CPU-minute/day quota
+  makes a ping frequent enough to prevent cold starts a real risk of exhausting the daily quota
+  and causing a full outage instead of a brief lag. Fixed on the frontend instead: GET requests
+  retry with backoff, and the UI shows "Waking up the server…" during a cold start rather than
+  an empty/error state.
 
 ## 7. Retrieval quality note
 
