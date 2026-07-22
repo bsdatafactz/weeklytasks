@@ -4,7 +4,7 @@
 
 Employees need quick, trustworthy answers to policy/benefits/procedure questions without
 digging through a stack of PDFs, DOCX files, and wiki pages. Today those answers live
-scattered across 20 source documents in 4 formats. This project builds an internal knowledge
+scattered across 24 source documents in 4 formats. This project builds an internal knowledge
 assistant that answers questions **grounded only in that corpus** — with citations back to
 the source document and section, a refusal path for out-of-scope questions, and resistance to
 prompt-injection attempts — so employees get a fast, accurate, auditable answer instead of an
@@ -12,12 +12,15 @@ LLM improvising from general knowledge.
 
 ## 2. Corpus
 
-**20 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` — a generated fictional "Contoso
+**24 documents, `uc1-RAG-Knowledge-Chatbot/backend/resources/` — a generated fictional "Contoso
 Corp" policy set** (per the brief's own alternative to collecting real-world documents),
-evenly split 5 PDF / 5 DOCX / 5 HTML / 5 Markdown, 179 chunks total (avg 104 tokens/chunk).
+evenly split 6 PDF / 6 DOCX / 6 HTML / 6 Markdown, 222 chunks total (avg 105 tokens/chunk).
 Every file follows a `CON-<DEPT>-<NNN>_<Topic>` naming convention (`CON-HR-002_PTO_Leave_Policy.pdf`,
-`CON-IT-002_Incident_Response_Policy.html`, etc.) spanning HR, IT, Finance, and Ops — 20
-distinct topics with no overlap.
+`CON-IT-002_Incident_Response_Policy.html`, etc.) spanning HR, IT, Finance, and Ops — 24
+distinct topics with no overlap. Started as 20 documents (5/5/5/5); 4 more
+(`CON-FIN-003_Delegation_of_Authority.md`, `CON-HR-014_Disciplinary_Action_Policy.pdf`,
+`CON-HR-015_Whistleblower_Policy.html`, `CON-OPS-002_Health_Safety_Policy.docx`) were added
+2026-07-22, one per format, keeping the even split intact.
 
 **Why fictional over real-world-scraped, decided after real experience with both (2026-07-21):**
 the corpus started as a 19-document patchwork of real, publicly-available HR templates and
@@ -244,6 +247,22 @@ live deployment rather than trusting the code:
   and causing a full outage instead of a brief lag. Fixed on the frontend instead: GET requests
   retry with backoff, and the UI shows "Waking up the server…" during a cold start rather than
   an empty/error state.
+
+## 6c. Frontend/backend QA pass (2026-07-22)
+
+Driven live via headless Chrome (DevTools Protocol) rather than code review alone: real page
+loads, a real typed chat message through actual streaming, a real Admin re-index click-through,
+Sources panel, and theme toggle, each checked for console errors/exceptions and network activity.
+Zero errors across all of it — confirms the chat/citation/reindex UI works end-to-end, not just
+in isolation.
+
+One real gap this surfaced: `AdminView.jsx`'s `pollUntilRunFinishes` (added for the reindex fix
+in §6b) is an unbounded `while (true)` polling loop with no timeout or max-retry cap. Given the
+hung-reindex incident above genuinely happened once already, a repeat would leave the admin's
+browser tab polling forever — "Re-indexing…" stuck indefinitely with no error surfaced, the only
+recovery being a page refresh. Not yet fixed — the identified next step is a max-wait (e.g. ~5
+minutes) that surfaces an error instead of polling silently forever, the same class of fix as
+the per-document embedding timeout in §6b.
 
 ## 7. Retrieval quality note
 
