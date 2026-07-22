@@ -98,12 +98,21 @@ export async function fetchModels() {
   return res.json()
 }
 
-export async function fetchAnalytics({ onRetry } = {}) {
-  return getWithRetry('/api/v1/analytics', { onRetry })
+// fetchAnalytics/fetchDocuments/fetchConversations are driven by useQuery (see
+// queryClient in main.jsx), which owns its own retry/backoff -- a manual retry loop
+// here would double up with TanStack Query's.
+async function getJson(path) {
+  const res = await fetch(`${API_BASE}${path}`, { headers: { 'x-api-key': API_KEY } })
+  if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
+  return res.json()
 }
 
-export async function fetchDocuments({ onRetry } = {}) {
-  return getWithRetry('/api/v1/documents', { onRetry })
+export async function fetchAnalytics() {
+  return getJson('/api/v1/analytics')
+}
+
+export async function fetchDocuments() {
+  return getJson('/api/v1/documents')
 }
 
 export async function reindexDocuments() {
@@ -119,8 +128,8 @@ export async function fetchIndexingRuns({ onRetry } = {}) {
   return getWithRetry('/api/v1/documents/runs', { onRetry })
 }
 
-export async function fetchConversations({ onRetry } = {}) {
-  return getWithRetry('/api/v1/conversations', { onRetry })
+export async function fetchConversations() {
+  return getJson('/api/v1/conversations')
 }
 
 export async function fetchConversationDetail(conversationId, { onRetry } = {}) {

@@ -68,13 +68,19 @@ function AssistantAvatar() {
   )
 }
 
+// Tailwind gives every plain utility class the same specificity, so an "active"
+// color class appended after the base color class isn't guaranteed to win -- which
+// class wins depends on stylesheet order, not on className string order. Swapping
+// the color classes outright (never emitting both at once) sidesteps that entirely.
 function ActionIconButton({ active, activeClassName, children, ...props }) {
+  const colorClasses = active
+    ? activeClassName
+    : 'text-neutral-400 hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-neutral-100'
+
   return (
     <button
       type="button"
-      className={`inline-flex size-7 items-center justify-center rounded-md text-neutral-400 transition hover:bg-neutral-200 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 ${
-        active ? activeClassName : ''
-      }`}
+      className={`inline-flex size-7 items-center justify-center rounded-md transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-800 ${colorClasses}`}
       {...props}
     >
       {children}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Sparkles } from 'lucide-react'
 import {
   streamChat,
@@ -40,38 +41,32 @@ function mapStoredMessage(message) {
 }
 
 export default function ChatView() {
-  const [conversations, setConversations] = useState([])
+  const queryClient = useQueryClient()
   const [activeConversationId, setActiveConversationId] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [models, setModels] = useState([])
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem(MODEL_STORAGE_KEY) || '')
   const [sourcesPanel, setSourcesPanel] = useState(null)
-  const [waking, setWaking] = useState(false)
+  const [selectWaking, setSelectWaking] = useState(false)
   const conversationIdRef = useRef(null)
   const listRef = useRef(null)
 
-  async function loadConversations() {
-    try {
-      const list = await fetchConversations({ onRetry: () => setWaking(true) })
-      setConversations(list)
-    } catch {
-      // sidebar list is non-critical -- leave it empty rather than blocking the chat
-    } finally {
-      setWaking(false)
-    }
-  }
+  const {
+    data: conversations = [],
+    isFetching: conversationsFetching,
+    failureCount: conversationsFailureCount,
+  } = useQuery({ queryKey: ['conversations'], queryFn: fetchConversations })
+  const { data: models = [] } = useQuery({ queryKey: ['models'], queryFn: fetchModels })
+  const waking = selectWaking || (conversationsFetching && conversationsFailureCount > 0)
 
+  // Model list arrives async from its own query -- fill in a default (the server's
+  // marked default, or just the first) the moment it lands, without clobbering a
+  // choice already restored from localStorage.
   useEffect(() => {
-    loadConversations()
-    fetchModels()
-      .then((list) => {
-        setModels(list)
-        setSelectedModel((prev) => prev || list.find((m) => m.default)?.id || list[0]?.id || '')
-      })
-      .catch(() => {})
-  }, [])
+    if (models.length === 0) return
+    setSelectedModel((prev) => prev || models.find((m) => m.default)?.id || models[0]?.id || '')
+  }, [models])
 
   function handleSelectModel(modelId) {
     setSelectedModel(modelId)
@@ -95,7 +90,7 @@ export default function ChatView() {
   async function handleSelectConversation(id) {
     if (id === activeConversationId) return
     try {
-      const detail = await fetchConversationDetail(id, { onRetry: () => setWaking(true) })
+      const detail = await fetchConversationDetail(id, { onRetry: () => setSelectWaking(true) })
       conversationIdRef.current = id
       setActiveConversationId(id)
       setMessages(detail.messages.map(mapStoredMessage))
@@ -103,14 +98,14 @@ export default function ChatView() {
     } catch {
       // leave current view as-is if the fetch fails
     } finally {
-      setWaking(false)
+      setSelectWaking(false)
     }
   }
 
   async function handleDeleteConversation(id) {
     try {
       await deleteConversation(id)
-      setConversations((prev) => prev.filter((c) => c.id !== id))
+      queryClient.setQueryData(['conversations'], (prev) => prev?.filter((c) => c.id !== id) ?? [])
       if (id === activeConversationId) handleNewChat()
     } catch {
       // no-op: sidebar just won't reflect the deletion if the request failed
@@ -183,7 +178,7 @@ export default function ChatView() {
       onMeta: (meta) => {
         conversationIdRef.current = meta.conversation_id
         setActiveConversationId(meta.conversation_id)
-        if (isNewConversation) loadConversations()
+        if (isNewConversation) queryClient.invalidateQueries({ queryKey: ['conversations'] })
         updateAssistant({
           refused: meta.refused,
           injectionFlagged: meta.injection_flagged,

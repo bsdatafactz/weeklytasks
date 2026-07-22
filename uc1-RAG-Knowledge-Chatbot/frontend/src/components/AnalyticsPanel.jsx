@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { MessagesSquare, MessageSquare, Coins } from 'lucide-react'
 import { fetchAnalytics } from '../lib/api.js'
 
@@ -44,21 +44,18 @@ function ModelUsageRow({ row, maxTokens }) {
 }
 
 export default function AnalyticsPanel() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
-  const [waking, setWaking] = useState(false)
+  const {
+    data,
+    isError,
+    isFetching,
+    failureCount,
+  } = useQuery({ queryKey: ['analytics'], queryFn: fetchAnalytics })
+  const waking = isFetching && failureCount > 0
 
-  useEffect(() => {
-    fetchAnalytics({ onRetry: () => setWaking(true) })
-      .then(setData)
-      .catch(() => setError('Could not load analytics.'))
-      .finally(() => setWaking(false))
-  }, [])
-
-  if (error) {
+  if (isError) {
     return (
       <div className="rounded-md border border-df-red/40 bg-df-red/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-200">
-        {error}
+        Could not load analytics.
       </div>
     )
   }

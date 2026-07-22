@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, FileText, CheckCircle2, Clock } from 'lucide-react'
 import { fetchDocuments, fetchIndexingRuns, reindexDocuments } from '../lib/api.js'
 import Sidebar from './Sidebar.jsx'
@@ -13,62 +14,54 @@ function formatDate(value) {
   })
 }
 
-export default function AdminView() {
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [reindexing, setReindexing] = useState(false)
-  const [error, setError] = useState(null)
-  const [waking, setWaking] = useState(false)
-
-  async function loadDocuments() {
-    setLoading(true)
-    setError(null)
-    try {
-      const docs = await fetchDocuments({ onRetry: () => setWaking(true) })
-      setDocuments(docs)
-    } catch {
-      setError('Could not reach the backend to list indexed documents.')
-    } finally {
-      setWaking(false)
-      setLoading(false)
+// Reindexing now runs in the background (see backend/app/routers/documents.py) --
+// the POST returns as soon as the run row exists, well before the corpus has actually
+// finished processing. Poll the run itself rather than the document list, since a
+// still-running reindex leaves the document list showing the *previous* run's counts,
+// which would otherwise look like reindexing already finished.
+async function pollUntilRunFinishes(runId) {
+  while (true) {
+    const runs = await fetchIndexingRuns()
+    const run = runs.find((r) => r.id === runId)
+    if (!run || run.status !== 'running') {
+      if (run?.status === 'failed') throw new Error('Indexing run failed')
+      return
     }
+    await new Promise((resolve) => setTimeout(resolve, 2000))
   }
+}
 
-  useEffect(() => {
-    loadDocuments()
-  }, [])
+export default function AdminView() {
+  const queryClient = useQueryClient()
+  const [error, setError] = useState(null)
 
-  async function handleReindex() {
-    setReindexing(true)
-    setError(null)
-    try {
+  const {
+    data: documents = [],
+    isLoading: loading,
+    isFetching,
+    isError: documentsErrored,
+    failureCount,
+  } = useQuery({ queryKey: ['documents'], queryFn: fetchDocuments })
+  const waking = isFetching && failureCount > 0
+
+  const reindexMutation = useMutation({
+    mutationFn: async () => {
       const run = await reindexDocuments()
       await pollUntilRunFinishes(run.id)
-      await loadDocuments()
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['documents'] }),
+  })
+
+  async function handleReindex() {
+    setError(null)
+    try {
+      await reindexMutation.mutateAsync()
     } catch {
       setError('Re-index failed. Check the backend logs.')
-    } finally {
-      setReindexing(false)
     }
   }
 
-  // Reindexing now runs in the background (see backend/app/routers/documents.py) --
-  // the POST returns as soon as the run row exists, well before the corpus has actually
-  // finished processing. Poll the run itself rather than the document list, since a
-  // still-running reindex leaves the document list showing the *previous* run's counts,
-  // which would otherwise look like reindexing already finished.
-  async function pollUntilRunFinishes(runId) {
-    while (true) {
-      const runs = await fetchIndexingRuns()
-      const run = runs.find((r) => r.id === runId)
-      if (!run || run.status !== 'running') {
-        if (run?.status === 'failed') throw new Error('Indexing run failed')
-        return
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-    }
-  }
-
+  const reindexing = reindexMutation.isPending
   const totalChunks = documents.reduce((sum, d) => sum + (d.chunk_count ?? 0), 0)
 
   return (
@@ -112,9 +105,9 @@ export default function AdminView() {
               </button>
             </div>
 
-            {error && (
+            {(error || documentsErrored) && (
               <div className="rounded-md border border-df-red/40 bg-df-red/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-200">
-                {error}
+                {error ?? 'Could not reach the backend to list indexed documents.'}
               </div>
             )}
 
